@@ -237,18 +237,27 @@ int ss_nvme_device_read(int fd, uint32_t nsid, uint64_t slba, uint16_t numbers, 
 }
 
 int ss_nvme_device_write(int fd, uint32_t nsid, uint64_t slba, uint16_t numbers, void *buffer, uint64_t buf_size) {
-    // nvme_zns_append(fd, nsid, slba, )
+    
     return 0;
 }
 
 int ss_zns_device_zone_reset(int fd, uint32_t nsid, uint64_t slba) {
-    
-    return -ENOSYS;
+    int ret = 0;
+    ret = nvme_zns_mgmt_send(fd, nsid, slba, false, NVME_ZNS_ZSA_RESET, 0, NULL);
+    if (ret == -1)
+    {
+        perror("ss zns device zone reset error ");
+        return ret;
+    }
+
+
+
+    return ret;
 }
 
 // this does not take slba because it will return that
 int ss_zns_device_zone_append(int fd, uint32_t nsid, uint64_t zslba, int numbers, void *buffer, uint32_t buf_size, uint64_t *written_slba){
-    //FIXME:
+    // nvme_zns_append(fd, nsid, slba, )
     return -ENOSYS;
 }
 
