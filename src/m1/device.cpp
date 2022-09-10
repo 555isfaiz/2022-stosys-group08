@@ -24,6 +24,9 @@ SOFTWARE.
 #include <libnvme.h>
 #include <cstring>
 #include <cassert>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "device.h"
 #include "../common/nvmeprint.h"
@@ -227,47 +230,133 @@ int show_zns_zone_status(int fd, int nsid, struct zone_to_test *ztest){
 
 int ss_nvme_device_io_with_mdts(int fd, uint32_t nsid, uint64_t slba, uint16_t numbers, void *buffer, uint64_t buf_size,
                                 uint64_t lba_size, uint64_t mdts_size, bool read){
-    //FIXME:
-    return -ENOSYS;
+    int ret;
+    int (*f) (int, uint32_t, uint64_t, uint16_t, void *, uint64_t);
+    if (read)
+        f = ss_nvme_device_read;
+    else 
+        f = ss_nvme_device_write;
+
+    uint64_t size_left = buf_size, ptr = 0, io_num, wp = slba, lba_num;
+
+    while (size_left > 0)
+    {
+        io_num = mdts_size < size_left ? mdts_size : size_left;
+        lba_num = io_num / lba_size;
+        ret = f(fd, nsid, wp, lba_num, (char *)(buffer) + ptr, io_num);
+        if (ret != 0)
+            return ret;
+        ptr += io_num;
+        size_left -= io_num;
+        wp += lba_num;
+    }
+    return ret;
 }
 
 int ss_nvme_device_read(int fd, uint32_t nsid, uint64_t slba, uint16_t numbers, void *buffer, uint64_t buf_size) {
-    //FIXME:
-    return -ENOSYS;
+    return nvme_read(fd, nsid, slba, numbers - 1, 0, 0, 0, 0, 0, buf_size, buffer, 0, NULL);
 }
 
 int ss_nvme_device_write(int fd, uint32_t nsid, uint64_t slba, uint16_t numbers, void *buffer, uint64_t buf_size) {
-    
-    return 0;
+    return nvme_write(fd, nsid, slba, numbers - 1, 0, 0, 0, 0, 0, 0, buf_size, buffer, 0, NULL);
 }
 
 int ss_zns_device_zone_reset(int fd, uint32_t nsid, uint64_t slba) {
-    int ret = 0;
-    ret = nvme_zns_mgmt_send(fd, nsid, slba, false, NVME_ZNS_ZSA_RESET, 0, NULL);
-    if (ret == -1)
-    {
-        perror("ss zns device zone reset error ");
-        return ret;
-    }
-
-
-
-    return ret;
+    return nvme_zns_mgmt_send(fd, nsid, slba, true, NVME_ZNS_ZSA_RESET, 0, NULL);
 }
 
 // this does not take slba because it will return that
 int ss_zns_device_zone_append(int fd, uint32_t nsid, uint64_t zslba, int numbers, void *buffer, uint32_t buf_size, uint64_t *written_slba){
-    // nvme_zns_append(fd, nsid, slba, )
-    return -ENOSYS;
+    __u64 res_lba;
+    int ret = nvme_zns_append(fd, nsid, zslba, numbers - 1, 0, 0, 0, 0, buf_size, buffer, 0, NULL, &res_lba);
+    if (ret != 0)
+    {
+        perror("ss zns device id ctrl error ");
+        return ret;
+    }
+    *written_slba = res_lba;
+    return ret;
 }
 
 void update_lba(uint64_t &write_lba, const uint32_t lba_size, const int count){
-    assert(false);
+    write_lba += count;
+}
+
+// from nvme-cli nvme.c
+void *mmap_registers(const char *devicename)
+{
+    nvme_root_t r;
+    r = nvme_scan(NULL);
+    if (!r){
+        printf("nvme_scan call failed with errno %d , null pointer returned in the scan call\n", -errno);
+        return NULL;
+    }
+
+    nvme_host_t h;
+    nvme_subsystem_t subsystem;
+    nvme_ctrl_t controller;
+    nvme_ns_t nspace;
+
+	char path[512];
+	void *membase;
+	int fd;
+
+	nvme_for_each_host(r, h) {
+        nvme_for_each_subsystem(h, subsystem) {
+            nvme_subsystem_for_each_ctrl(subsystem, controller) {
+                nvme_ctrl_for_each_ns(controller, nspace) {
+                    if (strcmp(nvme_ns_get_name(nspace), devicename) == 0)
+                    {
+                        snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
+                        goto loop_end;
+                    }
+                }
+            }
+        }
+    }
+
+loop_end:
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+        perror("can't open pci resource ");
+		return NULL;
+	}
+
+	membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
+	if (membase == MAP_FAILED) {
+		perror("can't do mmap for device ");
+		membase = NULL;
+	}
+
+	close(fd);
+	return membase;
 }
 
 // see 5.15.2.2 Identify Controller data structure (CNS 01h)
-uint64_t get_mdts_size(){
-    //FIXME:
-    return -ENOSYS;
+uint64_t get_mdts_size(int fd, const char *devicename){
+    void *membase = mmap_registers(devicename);
+    if (!membase)
+        return -1;
+    __u64 val;
+
+    // reverse edian
+    __u32 *tmp = (__u32 *)(membase);    // since NVME_REG_CAP = 0, no need to change address
+    __u32 low, high;
+
+	low = le32_to_cpu(*tmp);
+	high = le32_to_cpu(*(tmp + 1));
+
+    val = ((__u64) high << 32) | low;
+    __u8 *p = (__u8 *)&val;
+    uint32_t cap_mpsmin = 1 <<  (12 + (p[6] & 0xf));
+
+    munmap(membase, getpagesize());
+
+    struct nvme_id_ctrl ctrl;
+    int ret = nvme_identify_ctrl(fd, &ctrl);
+    if (ret != 0)
+        return ret;
+
+    return ctrl.mdts * cap_mpsmin;    // QEMU Bug!
 }
 }

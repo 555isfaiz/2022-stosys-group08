@@ -132,10 +132,10 @@ static int test1_lba_io_test(int zfd, uint32_t nsid, struct zone_to_test *ztest)
     return ret;
 }
 
-static int test2_zone0_full_io_test(int zfd, uint32_t nsid, struct zone_to_test *ztest){
+static int test2_zone0_full_io_test(int zfd, uint32_t nsid, struct zone_to_test *ztest, const char *devicename){
     uint64_t zone_size_in_bytes = ztest->lba_size_in_use * ztest->desc.zcap;
     uint64_t zslba = le64_to_cpu(ztest->desc.zslba);
-    uint64_t MDTS = get_mdts_size();
+    uint64_t MDTS = get_mdts_size(zfd, devicename);
     printf("Test 3: testing the max writing capacity of the device, trying to read and write a complete zone of size %lu bytes \n",
            zone_size_in_bytes);
     uint8_t *data = (uint8_t *) calloc(1, zone_size_in_bytes);
@@ -246,7 +246,7 @@ int main() {
         return ret;
     }
     t1 = test1_lba_io_test(fd, nsid, &ztest);
-    t2 = test2_zone0_full_io_test(fd, nsid, &ztest);
+    t2 = test2_zone0_full_io_test(fd, nsid, &ztest, zns_device->ctrl_name);
     printf("====================================================================\n");
     printf("Milestone 1 results \n");
     printf("Test 1 (read, write, append, reset) : %s \n", (t1 == 0 ? " Passed" : " Failed"));

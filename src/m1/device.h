@@ -57,7 +57,7 @@ int ss_zns_device_zone_append(int fd, uint32_t nsid, uint64_t zslba, int numbers
                               uint64_t *written_slba);
 
 void update_lba(uint64_t &write_lba, const uint32_t lba_size, const int count);
-uint64_t get_mdts_size();
+uint64_t get_mdts_size(int fd, const char *devicename);
 }
 
 #endif //STOSYS_PROJECT_DEVICE_H
