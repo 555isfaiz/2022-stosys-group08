@@ -357,6 +357,7 @@ uint64_t get_mdts_size(int fd, const char *devicename){
     if (ret != 0)
         return ret;
 
-    return ctrl.mdts * cap_mpsmin;    // QEMU Bug!
+    // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
+    return (1 << (ctrl.mdts - 1)) * cap_mpsmin;     // With QEMU Bug!
 }
 }
