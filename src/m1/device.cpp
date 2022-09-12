@@ -355,8 +355,10 @@ uint64_t get_mdts_size(int fd, const char *devicename){
     struct nvme_id_ctrl ctrl;
     int ret = nvme_identify_ctrl(fd, &ctrl);
     if (ret != 0)
-        return ret;
-
+    {   
+	 perror("ss nvme id ctrl error ");   
+    	 return ret;
+    }
     // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
     return (1 << (ctrl.mdts - 1)) * cap_mpsmin;     // With QEMU Bug!
 }
