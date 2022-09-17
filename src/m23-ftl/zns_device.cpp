@@ -37,7 +37,7 @@ std::unordered_map<int64_t, int64_t> data_mapping;
 struct zns_device_extra_info{
     int fd;
     uint32_t nsid;
-    uint64_t log_zone_slba=0x00;
+    uint64_t log_zone_slba;
     uint32_t log_zone_start;
     uint32_t log_zone_end;
     uint32_t data_zone_start;      // for milestone 5
@@ -56,6 +56,9 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     (*my_dev) = static_cast<struct user_zns_device *>(calloc(sizeof(struct user_zns_device), 1));
     info->fd = fd;
     (*my_dev)->_private = info;
+    
+    //it's should not start at 0x1000, only for a test setting, cap is 0x100 not 0x1000, why? 
+    info->log_zone_slba=0x100;
 
     int ret = nvme_get_nsid(fd, &(info->nsid));
     if (ret != 0){
@@ -129,19 +132,23 @@ int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buf
         return -1;
     }
 
-    uint32_t blocks = size / my_dev->lba_size_bytes, num_read = 0, ret;
+    uint32_t blocks = size / my_dev->lba_size_bytes, num_read = 0;
+    int32_t ret;
     struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
     for (uint64_t i = address; i < address + blocks; i++) {
         uint64_t entry = log_mapping[address];
-        if (!entry || (entry | ENTRY_INVALID)){
+	//the top bit 1 means invalid
+        if ( !entry || (entry & ENTRY_INVALID)){
             // invalid entry in log mapping
             // seek data mapping, replace entry
+	    printf("ERROR: entry = NULL or entry invalid!\n ");
             return -1;  // for milestone 2, this line will never be reached
         }
 
-        ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 1, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
+	// change nlb to 0, cause 0 means 1 block
+        ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
         if (ret){
-            printf("ERROR: failed to read\n");
+            printf("ERROR: failed to read at 0x%lx, ret: %d\n",(entry&~ENTRY_INVALID),ret);
             return ret;
         }
         num_read += my_dev->lba_size_bytes;
@@ -155,23 +162,26 @@ int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *bu
         return -1;
     }
 
-    uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0, ret;
+    uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0;
+    int32_t ret;
     struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-    for (uint64_t i = address; i < address + blocks; i++) {
+    //ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, blocks-1, 0, 0, 0, 0, 0, 0, size, (char *)buffer, 0, NULL);
+    for (uint32_t i = 0; i < blocks; i++) {
         // uint64_t entry = log_mapping[address];
         // if (!entry || (entry | ENTRY_INVALID)){
         //     // invalid entry in log mapping
         //     // seek data mapping, replace entry
         //     return -1;  // for milestone 2, this line will never be reached
         // }
-
-        ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, 1, 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
+        
+	// changed nlb to 0, cause 0 means 1 block
+        ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, 0, 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
         if (ret){
-            printf("ERROR: failed to write\n");
+            printf("ERROR: failed to write at 0x%lx, ret: %d, i:%u \n",info->log_zone_slba, ret, i);
             return ret;
         }
-        log_mapping[i] = (info->log_zone_slba & ~ENTRY_INVALID);
-        info->log_zone_slba += my_dev->lba_size_bytes;
+        log_mapping[address+i*my_dev->lba_size_bytes] = info->log_zone_slba;
+        info->log_zone_slba+=1;
         
         num_write += my_dev->lba_size_bytes;
     }
