@@ -37,6 +37,7 @@ std::unordered_map<int64_t, int64_t> data_mapping;
 struct zns_device_extra_info{
     int fd;
     uint32_t nsid;
+    uint64_t log_zone_slba=0x00;
     uint32_t log_zone_start;
     uint32_t log_zone_end;
     uint32_t data_zone_start;      // for milestone 5
@@ -157,19 +158,21 @@ int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *bu
     uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0, ret;
     struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
     for (uint64_t i = address; i < address + blocks; i++) {
-        uint64_t entry = log_mapping[address];
+        // uint64_t entry = log_mapping[address];
         // if (!entry || (entry | ENTRY_INVALID)){
         //     // invalid entry in log mapping
         //     // seek data mapping, replace entry
         //     return -1;  // for milestone 2, this line will never be reached
         // }
 
-        ret = nvme_write(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 1, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
+        ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, 1, 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
         if (ret){
             printf("ERROR: failed to write\n");
             return ret;
         }
-        log_mapping[i]=(entry & ~ENTRY_INVALID) + num_write;
+        log_mapping[i] = (info->log_zone_slba & ~ENTRY_INVALID);
+        info->log_zone_slba += my_dev->lba_size_bytes;
+        
         num_write += my_dev->lba_size_bytes;
     }
     
