@@ -21,8 +21,10 @@ SOFTWARE.
  */
 
 #include "zns_device.h"
+#include "libnvme.h"
 #include <cerrno>
 #include <unordered_map>
+#include <string.h>
 
 extern "C" {
 
@@ -32,11 +34,85 @@ std::unordered_map<int32_t, int32_t> data_mapping;
 struct zns_device_extra_info
 {
     int fd;
+    uint32_t nsid;
+    uint32_t log_zone_start;       // for milestone 5
+    uint32_t log_zone_end;       // for milestone 5
+    uint32_t data_zone_start;      // for milestone 5
+    uint32_t data_zone_end;      // for milestone 5
     // ...
 };
 
 int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev) {
-    return -ENOSYS;
+    int fd = nvme_open(params->name);
+    if (fd < 0)
+    {
+        printf("device %s opening failed %d errno %d \n", params->name, fd, errno);
+        return -fd;
+    }
+
+    struct zns_device_extra_info *info = static_cast<struct zns_device_extra_info *>(calloc(sizeof(struct zns_device_extra_info), 1));
+    (*my_dev) = static_cast<struct user_zns_device *>(calloc(sizeof(struct user_zns_device), 1));
+    info->fd = fd;
+    (*my_dev)->_private = info;
+
+    int ret = nvme_get_nsid(fd, &(info->nsid));
+    if (ret != 0)
+    {
+        printf("ERROR: failed to retrieve the nsid %d \n", ret);
+        return ret;
+    }
+
+    struct nvme_id_ns ns{};
+    ret = nvme_identify_ns(fd, info->nsid, &ns);
+    if (ret)
+    {
+        printf("ERROR: failed to retrieve the nsid struct %d \n", ret);
+        return ret;
+    }
+
+    (*my_dev)->lba_size_bytes = 1 << ns.lbaf[(ns.flbas & 0xf)].ds;
+    (*my_dev)->tparams.zns_lba_size = (*my_dev)->lba_size_bytes;
+
+
+    struct nvme_zone_report report;
+    ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
+                             NVME_ZNS_ZRA_REPORT_ZONES, NVME_ZNS_ZRAS_REPORT_ALL,
+                             0, sizeof(report), (void *)&report);
+    if(ret != 0) {
+        fprintf(stderr, "failed to report zones, ret %d \n", ret);
+        return ret;
+    }
+
+    (*my_dev)->tparams.zns_num_zones = report.nr_zones;
+
+    uint64_t total_size = sizeof(report) + (report.nr_zones * sizeof(struct nvme_zns_desc));
+    char *zone_reports = (char*) calloc (1, total_size);
+    // dont need to report all for milestone 2, but needed for milestone 5
+    ret = ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
+                             NVME_ZNS_ZRA_REPORT_ZONES, NVME_ZNS_ZRAS_REPORT_ALL,
+                             1, total_size, (void *)zone_reports);
+    if (ret)
+    {
+        free(zone_reports);
+        printf("ERROR: failed to get zone reports %d \n", ret);
+        return ret;
+    }
+
+    (*my_dev)->tparams.zns_zone_capacity = ((struct nvme_zone_report *)zone_reports)->entries[0].zcap * (*my_dev)->lba_size_bytes;
+    (*my_dev)->capacity_bytes = (report.nr_zones - params->log_zones) * ((*my_dev)->tparams.zns_zone_capacity);
+
+    free(zone_reports);
+
+    // populate log_mapping for ms5
+    // populate data_mapping for ms5
+
+    // record log_zone_start and log_zone_end for ms5
+    // record data_zone_start and data_zone_end for ms5
+
+    if (params->force_reset) 
+        return nvme_zns_mgmt_send(fd, info->nsid, 0, true, NVME_ZNS_ZSA_RESET, 0, NULL);
+
+    return 0;
 }
 
 int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size){
@@ -47,6 +123,7 @@ int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *bu
 }
 
 int deinit_ss_zns_device(struct user_zns_device *my_dev){
+    // remember to free my_dev :)
     return -ENOSYS;
 }
 }
