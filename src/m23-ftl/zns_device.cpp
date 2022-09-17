@@ -155,7 +155,7 @@ int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *bu
     }
 
     uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0, ret;
-    struct _extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
+    struct zns_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
     for (uint64_t i = address; i < address + blocks; i++) {
         uint64_t entry = log_mapping[address];
         // if (!entry || (entry | ENTRY_INVALID)){
