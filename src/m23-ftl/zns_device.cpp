@@ -28,21 +28,24 @@ SOFTWARE.
 
 extern "C" {
 
-std::unordered_map<int32_t, int32_t> log_mapping;
-std::unordered_map<int32_t, int32_t> data_mapping;
+#define ENTRY_INVALID (1L << 63) 
+
+std::unordered_map<int64_t, int64_t> log_mapping;
+std::unordered_map<int64_t, int64_t> data_mapping;
 
 struct zns_device_extra_info
 {
     int fd;
     uint32_t nsid;
-    uint32_t log_zone_start;       // for milestone 5
-    uint32_t log_zone_end;       // for milestone 5
+    uint32_t log_zone_start;
+    uint32_t log_zone_end;
     uint32_t data_zone_start;      // for milestone 5
     uint32_t data_zone_end;      // for milestone 5
     // ...
 };
 
-int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev) {
+int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev) 
+{
     int fd = nvme_open(params->name);
     if (fd < 0)
     {
@@ -88,7 +91,7 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     uint64_t total_size = sizeof(report) + (report.nr_zones * sizeof(struct nvme_zns_desc));
     char *zone_reports = (char*) calloc (1, total_size);
     // dont need to report all for milestone 2, but needed for milestone 5
-    ret = ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
+    ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
                              NVME_ZNS_ZRA_REPORT_ZONES, NVME_ZNS_ZRAS_REPORT_ALL,
                              1, total_size, (void *)zone_reports);
     if (ret)
@@ -98,7 +101,9 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
         return ret;
     }
 
-    (*my_dev)->tparams.zns_zone_capacity = ((struct nvme_zone_report *)zone_reports)->entries[0].zcap * (*my_dev)->lba_size_bytes;
+    uint64_t block_per_zone = ((struct nvme_zone_report *)zone_reports)->entries[0].zcap;
+    (*my_dev)->tparams.zns_zone_capacity = block_per_zone * (*my_dev)->lba_size_bytes;
+    // need to update this when doing persistence
     (*my_dev)->capacity_bytes = (report.nr_zones - params->log_zones) * ((*my_dev)->tparams.zns_zone_capacity);
 
     free(zone_reports);
@@ -110,13 +115,50 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     // record data_zone_start and data_zone_end for ms5
 
     if (params->force_reset) 
-        return nvme_zns_mgmt_send(fd, info->nsid, 0, true, NVME_ZNS_ZSA_RESET, 0, NULL);
+    {
+        ret = nvme_zns_mgmt_send(fd, info->nsid, 0, true, NVME_ZNS_ZSA_RESET, 0, NULL);
+        if (ret)
+        {
+            printf("ERROR: failed to reset all zones %d \n", ret);
+            return ret;
+        }
+
+        info->data_zone_start = info->data_zone_end = params->log_zones * block_per_zone;
+    }
 
     return 0;
 }
 
-int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size){
-    return -ENOSYS;
+int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size)
+{
+    if (size % my_dev->lba_size_bytes)
+    {
+        printf("INVALID: read size not aligned to block size\n");
+        return -1;
+    }
+
+    uint32_t blocks = size / my_dev->lba_size_bytes, num_read = 0, ret;
+    struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
+    for (uint64_t i = address; i < address + blocks; i++) 
+    {
+        uint64_t entry = log_mapping[address];
+        if (!entry || (entry | ENTRY_INVALID))
+        {
+            // invalid entry in log mapping
+            // seek data mapping, replace entry
+            return -1;  // for milestone 2, this line will never be reached
+        }
+
+        ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 1, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
+        if (ret)
+        {
+            printf("ERROR: failed to read\n");
+            return ret;
+        }
+        num_read += my_dev->lba_size_bytes;
+    }
+
+    return 0;
 }
 int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size){
     return -ENOSYS;
@@ -124,6 +166,7 @@ int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *bu
 
 int deinit_ss_zns_device(struct user_zns_device *my_dev){
     // remember to free my_dev :)
+    // remember to free my_dev->private :)
     return -ENOSYS;
 }
 }
