@@ -22,8 +22,18 @@ SOFTWARE.
 
 #include "zns_device.h"
 #include <cerrno>
+#include <unordered_map>
 
 extern "C" {
+
+std::unordered_map<int32_t, int32_t> log_mapping;
+std::unordered_map<int32_t, int32_t> data_mapping;
+
+struct zns_device_extra_info
+{
+    int fd;
+    // ...
+};
 
 int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev) {
     return -ENOSYS;
