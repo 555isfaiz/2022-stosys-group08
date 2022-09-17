@@ -28,13 +28,13 @@ SOFTWARE.
 
 extern "C" {
 
-#define ENTRY_INVALID (1L << 63) 
+#define ENTRY_INVALID (1L << 63)
+#define PAGE_SIZE 4096 
 
 std::unordered_map<int64_t, int64_t> log_mapping;
 std::unordered_map<int64_t, int64_t> data_mapping;
 
-struct zns_device_extra_info
-{
+struct zns_device_extra_info{
     int fd;
     uint32_t nsid;
     uint32_t log_zone_start;
@@ -44,11 +44,9 @@ struct zns_device_extra_info
     // ...
 };
 
-int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev) 
-{
+int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev) {
     int fd = nvme_open(params->name);
-    if (fd < 0)
-    {
+    if (fd < 0){
         printf("device %s opening failed %d errno %d \n", params->name, fd, errno);
         return -fd;
     }
@@ -59,16 +57,14 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     (*my_dev)->_private = info;
 
     int ret = nvme_get_nsid(fd, &(info->nsid));
-    if (ret != 0)
-    {
+    if (ret != 0){
         printf("ERROR: failed to retrieve the nsid %d \n", ret);
         return ret;
     }
 
     struct nvme_id_ns ns{};
     ret = nvme_identify_ns(fd, info->nsid, &ns);
-    if (ret)
-    {
+    if (ret){
         printf("ERROR: failed to retrieve the nsid struct %d \n", ret);
         return ret;
     }
@@ -94,8 +90,7 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
                              NVME_ZNS_ZRA_REPORT_ZONES, NVME_ZNS_ZRAS_REPORT_ALL,
                              1, total_size, (void *)zone_reports);
-    if (ret)
-    {
+    if (ret){
         free(zone_reports);
         printf("ERROR: failed to get zone reports %d \n", ret);
         return ret;
@@ -114,11 +109,9 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     // record log_zone_start and log_zone_end for ms5
     // record data_zone_start and data_zone_end for ms5
 
-    if (params->force_reset) 
-    {
+    if (params->force_reset) {
         ret = nvme_zns_mgmt_send(fd, info->nsid, 0, true, NVME_ZNS_ZSA_RESET, 0, NULL);
-        if (ret)
-        {
+        if (ret){
             printf("ERROR: failed to reset all zones %d \n", ret);
             return ret;
         }
@@ -129,29 +122,24 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     return 0;
 }
 
-int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size)
-{
-    if (size % my_dev->lba_size_bytes)
-    {
+int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size){
+    if (size % my_dev->lba_size_bytes){
         printf("INVALID: read size not aligned to block size\n");
         return -1;
     }
 
     uint32_t blocks = size / my_dev->lba_size_bytes, num_read = 0, ret;
     struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-    for (uint64_t i = address; i < address + blocks; i++) 
-    {
+    for (uint64_t i = address; i < address + blocks; i++) {
         uint64_t entry = log_mapping[address];
-        if (!entry || (entry | ENTRY_INVALID))
-        {
+        if (!entry || (entry | ENTRY_INVALID)){
             // invalid entry in log mapping
             // seek data mapping, replace entry
             return -1;  // for milestone 2, this line will never be reached
         }
 
         ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 1, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
-        if (ret)
-        {
+        if (ret){
             printf("ERROR: failed to read\n");
             return ret;
         }
@@ -161,12 +149,40 @@ int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buf
     return 0;
 }
 int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *buffer, uint32_t size){
-    return -ENOSYS;
+    if (size % my_dev->lba_size_bytes){
+        printf("INVALID: write size not aligned to block size\n");
+        return -1;
+    }
+
+    uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0, ret;
+    struct _extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
+    for (uint64_t i = address; i < address + blocks; i++) {
+        uint64_t entry = log_mapping[address];
+        // if (!entry || (entry | ENTRY_INVALID)){
+        //     // invalid entry in log mapping
+        //     // seek data mapping, replace entry
+        //     return -1;  // for milestone 2, this line will never be reached
+        // }
+
+        ret = nvme_write(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 1, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
+        if (ret){
+            printf("ERROR: failed to write\n");
+            return ret;
+        }
+        log_mapping[i]=entry & ~ENTRY_INVALID+num_write;
+        num_write += my_dev->lba_size_bytes;
+    }
+    
+    return 0;
 }
 
 int deinit_ss_zns_device(struct user_zns_device *my_dev){
-    // remember to free my_dev :)
+    
     // remember to free my_dev->private :)
-    return -ENOSYS;
+    free(my_dev->_private);
+
+    // remember to free my_dev :)
+    free(my_dev);
+    return 0;
 }
 }
