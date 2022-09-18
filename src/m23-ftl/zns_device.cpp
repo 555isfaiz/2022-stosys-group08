@@ -132,27 +132,36 @@ int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buf
         return -1;
     }
 
-    uint32_t blocks = size / my_dev->lba_size_bytes, num_read = 0;
+    uint32_t blocks = size / my_dev->lba_size_bytes;
     int32_t ret;
     struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-    for (uint64_t i = address; i < address + blocks; i++) {
-        uint64_t entry = log_mapping[address];
+    uint64_t entry = log_mapping[address];
+    ret = nvme_read(info->fd, info->nsid, entry, blocks-1, 0, 0, 0, 0, 0, size, (char *)buffer, 0, NULL);
+    if (ret){
+        printf("ERROR: failed to read at 0x%lx, ret: %d\n",(entry&~ENTRY_INVALID),ret);
+        return ret;
+    }
+
+
+    /*In order to get faster, we have to disable validity verification                                                      */
+    //for (uint64_t i = address; i < address + blocks; i++) {
+        //uint64_t entry = log_mapping[address];
 	//the top bit 1 means invalid
-        if ( !entry || (entry & ENTRY_INVALID)){
-            // invalid entry in log mapping
-            // seek data mapping, replace entry
-	    printf("ERROR: entry = NULL or entry invalid!\n ");
-            return -1;  // for milestone 2, this line will never be reached
-        }
+        //if ( !entry || (entry & ENTRY_INVALID)){
+        //    //invalid entry in log mapping
+        //    //seek data mapping, replace entry
+	//    printf("ERROR: entry = NULL or entry invalid!\n ");
+        //    return -1;  // for milestone 2, this line will never be reached
+        //}
 
 	// change nlb to 0, cause 0 means 1 block
-        ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
-        if (ret){
-            printf("ERROR: failed to read at 0x%lx, ret: %d\n",(entry&~ENTRY_INVALID),ret);
-            return ret;
-        }
-        num_read += my_dev->lba_size_bytes;
-    }
+        //ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
+        //if (ret){
+        //    printf("ERROR: failed to read at 0x%lx, ret: %d\n",(entry&~ENTRY_INVALID),ret);
+        //    return ret;
+        //}
+        //num_read += my_dev->lba_size_bytes;
+    //}
 
     return 0;
 }
@@ -162,28 +171,20 @@ int zns_udevice_write(struct user_zns_device *my_dev, uint64_t address, void *bu
         return -1;
     }
 
-    uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0;
+    uint32_t blocks = size / my_dev->lba_size_bytes;
     int32_t ret;
     struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-    //ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, blocks-1, 0, 0, 0, 0, 0, 0, size, (char *)buffer, 0, NULL);
-    for (uint32_t i = 0; i < blocks; i++) {
-        // uint64_t entry = log_mapping[address];
-        // if (!entry || (entry | ENTRY_INVALID)){
-        //     // invalid entry in log mapping
-        //     // seek data mapping, replace entry
-        //     return -1;  // for milestone 2, this line will never be reached
-        // }
+    ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, blocks-1, 0, 0, 0, 0, 0, 0, size, (char *)buffer, 0, NULL);
+    if (ret){
+          printf("ERROR: failed to write at 0x%lx, ret: %d\n",info->log_zone_slba, ret);         
+	  return ret;
+    }
+
+    for (uint32_t i = address; i < address+blocks; i++) {
         
-	// changed nlb to 0, cause 0 means 1 block
-        ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, 0, 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
-        if (ret){
-            printf("ERROR: failed to write at 0x%lx, ret: %d, i:%u \n",info->log_zone_slba, ret, i);
-            return ret;
-        }
-        log_mapping[address+i*my_dev->lba_size_bytes] = info->log_zone_slba;
+        log_mapping[i] = info->log_zone_slba;
         info->log_zone_slba+=1;
         
-        num_write += my_dev->lba_size_bytes;
     }
     
     return 0;
