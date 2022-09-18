@@ -57,7 +57,7 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     info->fd = fd;
     (*my_dev)->_private = info;
     
-    //it's should not start at 0x1000, only for a test setting, cap is 0x100 not 0x1000, why? 
+    //it's should not start at 0x100,but !entry not support 0x0
     info->log_zone_slba=0x100;
 
     int ret = nvme_get_nsid(fd, &(info->nsid));
@@ -76,7 +76,7 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
     (*my_dev)->lba_size_bytes = 1 << ns.lbaf[(ns.flbas & 0xf)].ds;
     (*my_dev)->tparams.zns_lba_size = (*my_dev)->lba_size_bytes;
 
-
+    
     struct nvme_zone_report report;
     ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
                              NVME_ZNS_ZRA_REPORT_ZONES, NVME_ZNS_ZRAS_REPORT_ALL,
@@ -122,7 +122,7 @@ int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device *
 
         info->data_zone_start = info->data_zone_end = params->log_zones * block_per_zone;
     }
-
+    
     return 0;
 }
 
@@ -141,7 +141,6 @@ int zns_udevice_read(struct user_zns_device *my_dev, uint64_t address, void *buf
         printf("ERROR: failed to read at 0x%lx, ret: %d\n",(entry&~ENTRY_INVALID),ret);
         return ret;
     }
-
 
     /*In order to get faster, we have to disable validity verification                                                      */
     //for (uint64_t i = address; i < address + blocks; i++) {
