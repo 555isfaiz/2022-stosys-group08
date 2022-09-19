@@ -31,7 +31,7 @@ extern "C"
 {
 
 #define ENTRY_INVALID (1L << 63)
-#define DEFAULT_LENGTH 4096
+#define DEFAULT_LENGTH 8192
 
     // std::unordered_map<int64_t, int64_t> log_mapping;
     // std::unordered_map<int64_t, int64_t> data_mapping;
