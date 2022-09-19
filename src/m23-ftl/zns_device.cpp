@@ -146,12 +146,12 @@ extern "C"
             return -1;
         }
 
-        uint32_t blocks = size / my_dev->lba_size_bytes, num_read = 0;
-        int32_t ret;
+        int32_t ret, lba_s = my_dev->lba_size_bytes;
+        uint32_t blocks = size / lba_s, num_read = 0;
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-        for (uint64_t i = address; i < address + blocks; i++)
+        for (uint64_t i = address; i < address + blocks * lba_s; i += lba_s)
         {
-            uint64_t entry = log_mapping[address + i * my_dev->lba_size_bytes];
+            uint64_t entry = log_mapping[i];
             // the top bit 1 means invalid
             if (log_mapping.find(address) == log_mapping.end() || (entry & ENTRY_INVALID))
             {
@@ -162,13 +162,13 @@ extern "C"
             }
 
             // change nlb to 0, cause 0 means 1 block
-            ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_read, 0, NULL);
+            ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, lba_s, (char *)buffer + num_read, 0, NULL);
             if (ret)
             {
                 printf("ERROR: failed to read at 0x%lx, ret: %d\n", (entry & ~ENTRY_INVALID), ret);
                 return ret;
             }
-            num_read += my_dev->lba_size_bytes;
+            num_read += lba_s;
         }
 
         return 0;

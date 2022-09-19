@@ -58,4 +58,5 @@ CMakeCache.txt
 Makefile
 gdb
 .vscode
+build
 
