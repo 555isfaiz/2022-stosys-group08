@@ -31,7 +31,7 @@ extern "C"
 {
 
 #define ENTRY_INVALID (1L << 63)
-#define DEFAULT_LENGTH 1024
+#define DEFAULT_LENGTH 4096
 
     // std::unordered_map<int64_t, int64_t> log_mapping;
     // std::unordered_map<int64_t, int64_t> data_mapping;
@@ -148,11 +148,11 @@ extern "C"
         int32_t ret, lba_s = my_dev->lba_size_bytes;
         uint32_t blocks = size / lba_s, num_read = 0;
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-        for (uint64_t i = address / lba_s; i < blocks; i++)
+        for (uint64_t i = address / lba_s; i < address / lba_s + blocks; i++)
         {
             uint64_t entry;
             // the top bit 1 means invalid
-            if (i >= log_mapping.size() || (entry = log_mapping[i] & ENTRY_INVALID))
+            if (i >= log_mapping.size() || ((entry = log_mapping[i]) & ENTRY_INVALID))
             {
                 // invalid entry in log mapping
                 // seek data mapping, replace entry
@@ -194,9 +194,16 @@ extern "C"
         }
 
         info->log_zone_end = res_lba + 1;
-        for (uint32_t i = address / my_dev->lba_size_bytes; i < blocks; i++)
+        for (uint32_t i = 0; i < blocks; i++)
         {
-            log_mapping[i] = lz_end_before + i;
+            uint32_t index = i + address / my_dev->lba_size_bytes;
+            if (index >= log_mapping.size())
+            {
+                int64_t new_size = log_mapping.size();
+                while (new_size <= index) new_size <<= 1;
+                log_mapping.resize(new_size);
+            }
+            log_mapping[index] = lz_end_before + i;
             // log_mapping[address + i * my_dev->lba_size_bytes] = info->log_zone_end++;
             // info->log_zone_end += i;
         }
