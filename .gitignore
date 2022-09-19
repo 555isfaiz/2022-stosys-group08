@@ -57,3 +57,4 @@ bin
 CMakeFiles
 .vscode
 gdb
+build
