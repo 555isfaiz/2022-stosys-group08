@@ -30,7 +30,6 @@ extern "C"
 {
 
 #define ENTRY_INVALID (1L << 63)
-#define PAGE_SIZE 4096
 
     std::unordered_map<int64_t, int64_t> log_mapping;
     std::unordered_map<int64_t, int64_t> data_mapping;
@@ -39,7 +38,7 @@ extern "C"
     {
         int fd;
         uint32_t nsid;
-        uint64_t log_zone_slba;
+        uint32_t blocks_per_zone;
         uint32_t log_zone_start;
         uint32_t log_zone_end;
         uint32_t data_zone_start; // for milestone 5
@@ -61,9 +60,6 @@ extern "C"
         info->fd = fd;
         (*my_dev)->_private = info;
 
-        // it's should not start at 0x1000, only for a test setting, cap is 0x100 not 0x1000, why?
-        info->log_zone_slba = 0x100;
-
         int ret = nvme_get_nsid(fd, &(info->nsid));
         if (ret != 0)
         {
@@ -71,9 +67,7 @@ extern "C"
             return ret;
         }
 
-        struct nvme_id_ns ns
-        {
-        };
+        struct nvme_id_ns ns;
         ret = nvme_identify_ns(fd, info->nsid, &ns);
         if (ret)
         {
@@ -109,8 +103,9 @@ extern "C"
             return ret;
         }
 
-        uint64_t block_per_zone = ((struct nvme_zone_report *)zone_reports)->entries[0].zcap;
-        (*my_dev)->tparams.zns_zone_capacity = block_per_zone * (*my_dev)->lba_size_bytes;
+        uint64_t blocks_per_zone = ((struct nvme_zone_report *)zone_reports)->entries[0].zcap;
+        info->blocks_per_zone = blocks_per_zone;
+        (*my_dev)->tparams.zns_zone_capacity = blocks_per_zone * (*my_dev)->lba_size_bytes;
         // need to update this when doing persistence
         (*my_dev)->capacity_bytes = (report.nr_zones - params->log_zones) * ((*my_dev)->tparams.zns_zone_capacity);
 
@@ -131,7 +126,7 @@ extern "C"
                 return ret;
             }
 
-            info->data_zone_start = info->data_zone_end = params->log_zones * block_per_zone;
+            info->data_zone_start = info->data_zone_end = params->log_zones * blocks_per_zone;
             info->log_zone_start = info->log_zone_end = 0;
         }
 
@@ -182,30 +177,24 @@ extern "C"
             return -1;
         }
 
-        uint32_t blocks = size / my_dev->lba_size_bytes, num_write = 0;
-        int32_t ret;
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-        // ret = nvme_write(info->fd, info->nsid, info->log_zone_slba, blocks-1, 0, 0, 0, 0, 0, 0, size, (char *)buffer, 0, NULL);
+        uint32_t blocks = size / my_dev->lba_size_bytes;
+        __u64 res_lba;
+        int32_t ret, lz_end_before = info->log_zone_end, z_no = info->log_zone_end / info->blocks_per_zone;
+        ret = nvme_zns_append(info->fd, info->nsid, z_no * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, size, buffer, 0, NULL, &res_lba);
+        // ret = nvme_write(info->fd, info->nsid, info->log_zone_end, blocks - 1, 0, 0, 0, 0, 0, 0, size, buffer, 0, NULL);
+        if (ret)
+        {
+            printf("ERROR: failed to write at 0x%d, ret: %d \n", info->log_zone_end, ret);
+            return ret;
+        }
+
+        info->log_zone_end = res_lba + 1;
         for (uint32_t i = 0; i < blocks; i++)
         {
-            // uint64_t entry = log_mapping[address];
-            // if (!entry || (entry | ENTRY_INVALID)){
-            //     // invalid entry in log mapping
-            //     // seek data mapping, replace entry
-            //     return -1;  // for milestone 2, this line will never be reached
-            // }
-
-            // changed nlb to 0, cause 0 means 1 block
-            ret = nvme_write(info->fd, info->nsid, info->log_zone_end, 0, 0, 0, 0, 0, 0, 0, my_dev->lba_size_bytes, (char *)buffer + num_write, 0, NULL);
-            if (ret)
-            {
-                printf("ERROR: failed to write at 0x%d, ret: %d, i:%u \n", info->log_zone_end, ret, i);
-                return ret;
-            }
-            log_mapping[address + i * my_dev->lba_size_bytes] = info->log_zone_end;
-            info->log_zone_end += 1;
-
-            num_write += my_dev->lba_size_bytes;
+            log_mapping[address + i * my_dev->lba_size_bytes] = lz_end_before + i;
+            // log_mapping[address + i * my_dev->lba_size_bytes] = info->log_zone_end++;
+            // info->log_zone_end += i;
         }
 
         return 0;
