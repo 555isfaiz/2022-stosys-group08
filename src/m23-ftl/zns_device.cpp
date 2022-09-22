@@ -25,6 +25,7 @@ SOFTWARE.
 #include <cerrno>
 #include <unordered_map>
 #include <string.h>
+#include <pthread.h>
 
 extern "C"
 {
@@ -33,6 +34,12 @@ extern "C"
 
     std::unordered_map<int64_t, int64_t> log_mapping;
     std::unordered_map<int64_t, int64_t> data_mapping;
+
+    pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
+
+    pthread_t gc_thread_id = 0;
+    bool gc_thread_stop = false;
 
     struct zns_device_extra_info
     {
@@ -43,8 +50,44 @@ extern "C"
         uint32_t log_zone_end;
         uint32_t data_zone_start; // for milestone 5
         uint32_t data_zone_end;   // for milestone 5
+        int gc_watermark;
+        int log_zone_num_config;
         // ...
     };
+
+    struct user_zns_device *zns_dev;
+    struct zns_device_extra_info *zns_dev_ex;
+
+    int get_free_lz_num()
+    {
+        return zns_dev_ex->log_zone_num_config - (zns_dev_ex->log_zone_end - zns_dev_ex->log_zone_start) / zns_dev_ex->blocks_per_zone;
+    }
+
+    void *gc_loop(void *args)
+    {
+        pthread_mutex_lock(&gc_mutex);
+        while (1)
+        {
+            while (!gc_thread_stop && get_free_lz_num() > zns_dev_ex->gc_watermark)
+            {
+                printf("GC sleeping\n");
+                pthread_cond_wait(&gc_wakeup, &gc_mutex);
+                printf("GC in the house\n");
+            }
+
+            if (gc_thread_stop)
+            {
+                printf("GC out\n");
+                pthread_mutex_unlock(&gc_mutex);
+                break;
+            }
+
+            // ...
+        }
+        pthread_mutex_unlock(&gc_mutex);
+
+        return (void *)0;
+    }
 
     int init_ss_zns_device(struct zdev_init_params *params, struct user_zns_device **my_dev)
     {
@@ -58,6 +101,8 @@ extern "C"
         struct zns_device_extra_info *info = static_cast<struct zns_device_extra_info *>(calloc(sizeof(struct zns_device_extra_info), 1));
         (*my_dev) = static_cast<struct user_zns_device *>(calloc(sizeof(struct user_zns_device), 1));
         info->fd = fd;
+        info->gc_watermark = params->gc_wmark;
+        info->log_zone_num_config = params->log_zones;
         (*my_dev)->_private = info;
 
         int ret = nvme_get_nsid(fd, &(info->nsid));
@@ -130,6 +175,16 @@ extern "C"
             info->log_zone_start = info->log_zone_end = 0;
         }
 
+        ret = pthread_create(&gc_thread_id, NULL, &gc_loop, NULL);
+        if (ret)
+        {
+            printf("ERROR: failed to create gc thread %d \n", ret);
+            return ret;
+        }
+
+        zns_dev = *my_dev;
+        zns_dev_ex = info;
+
         return 0;
     }
 
@@ -178,6 +233,12 @@ extern "C"
         }
 
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
+        pthread_mutex_lock(&gc_mutex);
+        if (get_free_lz_num() <= info->gc_watermark)
+        {
+            pthread_cond_signal(&gc_wakeup);
+        }
+
         uint32_t blocks = size / my_dev->lba_size_bytes;
         __u64 res_lba;
         int32_t ret, lz_end_before = info->log_zone_end, z_no = info->log_zone_end / info->blocks_per_zone;
@@ -197,16 +258,22 @@ extern "C"
             // info->log_zone_end += i;
         }
 
+        pthread_mutex_unlock(&gc_mutex);
         return 0;
     }
 
     int deinit_ss_zns_device(struct user_zns_device *my_dev)
     {
+        gc_thread_stop = true;
+        pthread_cond_signal(&gc_wakeup);
 
-        // remember to free my_dev->private :)
+        // wait for gc stop
+        pthread_join(gc_thread_id, NULL);
+
+        pthread_mutex_destroy(&gc_mutex);
+        pthread_cond_destroy(&gc_wakeup);
+
         free(my_dev->_private);
-
-        // remember to free my_dev :)
         free(my_dev);
         return 0;
     }
