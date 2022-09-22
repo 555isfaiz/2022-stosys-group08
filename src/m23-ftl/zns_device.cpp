@@ -37,6 +37,7 @@ extern "C"
 
     pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
 
     pthread_t gc_thread_id = 0;
     bool gc_thread_stop = false;
@@ -65,9 +66,9 @@ extern "C"
 
     void *gc_loop(void *args)
     {
-        pthread_mutex_lock(&gc_mutex);
         while (1)
         {
+            pthread_mutex_lock(&gc_mutex);
             while (!gc_thread_stop && get_free_lz_num() > zns_dev_ex->gc_watermark)
             {
                 printf("GC sleeping\n");
@@ -83,8 +84,10 @@ extern "C"
             }
 
             // ...
+
+            pthread_cond_signal(&gc_sleep);
+            pthread_mutex_unlock(&gc_mutex);
         }
-        pthread_mutex_unlock(&gc_mutex);
 
         return (void *)0;
     }
@@ -234,9 +237,10 @@ extern "C"
 
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
         pthread_mutex_lock(&gc_mutex);
-        if (get_free_lz_num() <= info->gc_watermark)
+        while (get_free_lz_num() <= info->gc_watermark)
         {
             pthread_cond_signal(&gc_wakeup);
+            pthread_cond_wait(&gc_sleep, &gc_mutex);
         }
 
         uint32_t blocks = size / my_dev->lba_size_bytes;
