@@ -30,7 +30,9 @@ SOFTWARE.
 extern "C"
 {
 
-#define ENTRY_INVALID (1L << 63)
+#define ENTRY_INVALID                         (1L << 63)
+#define address_2_zone(addr)                  ((addr) / (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)) 
+#define address_2_offset(addr)                ((addr) % (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes) / zns_dev->lba_size_bytes) 
 
     std::unordered_map<int64_t, int64_t> log_mapping;
     std::unordered_map<int64_t, int64_t> data_mapping;
@@ -51,6 +53,7 @@ extern "C"
         uint32_t log_zone_end;
         uint32_t data_zone_start; // for milestone 5
         uint32_t data_zone_end;   // for milestone 5
+        uint8_t *zone_states;
         int gc_watermark;
         int log_zone_num_config;
         // ...
@@ -137,6 +140,7 @@ extern "C"
         }
 
         (*my_dev)->tparams.zns_num_zones = report.nr_zones;
+        info->zone_states = (uint8_t *)calloc(sizeof(uint8_t), report.nr_zones);
 
         uint64_t total_size = sizeof(report) + (report.nr_zones * sizeof(struct nvme_zns_desc));
         char *zone_reports = (char *)calloc(1, total_size);
@@ -156,6 +160,11 @@ extern "C"
         (*my_dev)->tparams.zns_zone_capacity = blocks_per_zone * (*my_dev)->lba_size_bytes;
         // need to update this when doing persistence
         (*my_dev)->capacity_bytes = (report.nr_zones - params->log_zones) * ((*my_dev)->tparams.zns_zone_capacity);
+
+        for (uint64_t i = params->log_zones; i < report.nr_zones; i++)
+        {
+            info->zone_states[i] = (((struct nvme_zone_report *)zone_reports)->entries[i].zs >> 4);
+        } 
 
         free(zone_reports);
 
@@ -208,13 +217,16 @@ extern "C"
             // the top bit 1 means invalid
             if (log_mapping.find(address) == log_mapping.end() || (entry & ENTRY_INVALID))
             {
-                // invalid entry in log mapping
-                // seek data mapping, replace entry
-                printf("ERROR: entry = NULL or entry invalid!\n ");
-                return -1; // for milestone 2, this line will never be reached
+                uint64_t zone_no = address_2_zone(address);
+                if (data_mapping.find(zone_no) == data_mapping.end())
+                {
+                    printf("ERROR: no data at 0x%lx\n", address);
+                    return ret;
+                }
+
+                entry = data_mapping[zone_no] + address_2_offset(address);
             }
 
-            // change nlb to 0, cause 0 means 1 block
             ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, lba_s, (char *)buffer + num_read, 0, NULL);
             if (ret)
             {
@@ -247,7 +259,6 @@ extern "C"
         __u64 res_lba;
         int32_t ret, lz_end_before = info->log_zone_end, z_no = info->log_zone_end / info->blocks_per_zone;
         ret = nvme_zns_append(info->fd, info->nsid, z_no * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, size, buffer, 0, NULL, &res_lba);
-        // ret = nvme_write(info->fd, info->nsid, info->log_zone_end, blocks - 1, 0, 0, 0, 0, 0, 0, size, buffer, 0, NULL);
         if (ret)
         {
             printf("ERROR: failed to write at 0x%d, ret: %d \n", info->log_zone_end, ret);
@@ -258,8 +269,6 @@ extern "C"
         for (uint32_t i = 0; i < blocks; i++)
         {
             log_mapping[address + i * my_dev->lba_size_bytes] = lz_end_before + i;
-            // log_mapping[address + i * my_dev->lba_size_bytes] = info->log_zone_end++;
-            // info->log_zone_end += i;
         }
 
         pthread_mutex_unlock(&gc_mutex);
@@ -277,6 +286,7 @@ extern "C"
         pthread_mutex_destroy(&gc_mutex);
         pthread_cond_destroy(&gc_wakeup);
 
+        free(zns_dev_ex->zone_states);
         free(my_dev->_private);
         free(my_dev);
         return 0;
