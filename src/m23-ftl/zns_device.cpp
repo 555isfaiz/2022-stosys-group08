@@ -80,6 +80,7 @@ extern "C"
                 return i * zns_dev_ex->blocks_per_zone;
             }
         }
+	printf("no empty zone now!\n");
         return -1;    
     }
 
@@ -206,10 +207,12 @@ extern "C"
             pthread_mutex_lock(&gc_mutex);
             while (!gc_thread_stop && get_free_lz_num() > zns_dev_ex->gc_watermark)
             {
-                printf("GC sleeping\n");
+                printf("GC is sleeping\n");
                 pthread_cond_wait(&gc_wakeup, &gc_mutex);
                 printf("GC in the house\n");
             }
+            
+            printf("GC is working now!\n");
 
             if (gc_thread_stop)
             {
@@ -244,6 +247,7 @@ extern "C"
                 
                 if(zone_no==-1)
                 {
+		    printf("log_mapping is empty now\n");
                     break;
                 }
                 else
@@ -253,6 +257,7 @@ extern "C"
                     {
                         printf("allocate data zone error: %d!\n",ret);
                     }
+		    printf("allocate data zone virtual number zone_no:%d successfully!\n",zone_no);
                 }
             }
 
