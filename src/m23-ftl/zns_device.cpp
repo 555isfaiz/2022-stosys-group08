@@ -26,14 +26,17 @@ SOFTWARE.
 #include <unordered_map>
 #include <string.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 extern "C"
 {
 
-#define ENTRY_INVALID (1L << 63)
-#define address_2_zone(addr) ((addr) / (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)) + zns_dev_ex->log_zone_num_config
-#define address_2_offset(addr) ((addr) % (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes) / zns_dev->lba_size_bytes)
-#define zone_2_address(zone_no) (zone_no - zns_dev_ex->log_zone_num_config) * (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)
+#define ENTRY_INVALID                   (1L << 63)
+#define address_2_zone(addr)            ((addr) / (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)) + zns_dev_ex->log_zone_num_config
+#define address_2_offset(addr)          ((addr) % (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes) / zns_dev->lba_size_bytes)
+#define zone_2_address(zone_no)         (zone_no - zns_dev_ex->log_zone_num_config) * (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)
 #define EMPTY 1
 #define FULL 14
 
@@ -57,6 +60,7 @@ extern "C"
         uint32_t data_zone_start; // for milestone 5
         uint32_t data_zone_end;   // for milestone 5
         uint8_t *zone_states;
+        uint32_t mdts;
         int gc_watermark;
         int log_zone_num_config;
         // ...
@@ -64,6 +68,111 @@ extern "C"
 
     struct user_zns_device *zns_dev;
     struct zns_device_extra_info *zns_dev_ex;
+
+    int ss_nvme_device_io_with_mdts(uint64_t slba, void *buffer, uint64_t buf_size, bool read)
+    {
+        int ret;
+        
+
+        uint64_t size_left = buf_size, ptr = 0, io_num, wp = slba, lba_num, mdts_size = zns_dev_ex->mdts, lba_size = zns_dev->lba_size_bytes;
+        __u64 res;
+        while (size_left > 0)
+        {
+            io_num = mdts_size < size_left ? mdts_size : size_left;
+            lba_num = io_num / lba_size - ((io_num % lba_size) == 0 ? 1 : 0);
+            if (read)
+                ret = nvme_read(zns_dev_ex->fd, zns_dev_ex->nsid, wp, lba_num, 0, 0, 0, 0, 0, io_num, (char *)(buffer) + ptr, 0, NULL);
+            else
+                ret = nvme_zns_append(zns_dev_ex->fd, zns_dev_ex->nsid, slba, lba_num, 0, 0, 0, 0, io_num, (char *)(buffer) + ptr, 0, NULL, &res);
+            if (ret != 0)
+                return ret;
+            ptr += io_num;
+            size_left -= io_num;
+            wp += lba_num;
+        }
+        return ret;
+    }
+
+    // from nvme-cli nvme.c
+    void *mmap_registers(const char *devicename)
+    {
+        nvme_root_t r;
+        r = nvme_scan(NULL);
+        if (!r){
+            printf("nvme_scan call failed with errno %d , null pointer returned in the scan call\n", -errno);
+            return NULL;
+        }
+
+        nvme_host_t h;
+        nvme_subsystem_t subsystem;
+        nvme_ctrl_t controller;
+        nvme_ns_t nspace;
+
+        char path[512];
+        void *membase;
+        int fd;
+
+        nvme_for_each_host(r, h) {
+            nvme_for_each_subsystem(h, subsystem) {
+                nvme_subsystem_for_each_ctrl(subsystem, controller) {
+                    nvme_ctrl_for_each_ns(controller, nspace) {
+                        if (strcmp(nvme_ns_get_name(nspace), devicename) == 0)
+                        {
+                            snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
+                            goto loop_end;
+                        }
+                    }
+                }
+            }
+        }
+
+    loop_end:
+        fd = open(path, O_RDONLY);
+        if (fd < 0) {
+            perror("can't open pci resource ");
+            return NULL;
+        }
+
+        membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
+        if (membase == MAP_FAILED) {
+            perror("can't do mmap for device ");
+            membase = NULL;
+        }
+
+        close(fd);
+        return membase;
+    }
+
+    // see 5.15.2.2 Identify Controller data structure (CNS 01h)
+    uint64_t get_mdts_size(int fd, const char *devicename){
+        void *membase = mmap_registers(devicename);
+        if (!membase)
+            return -1;
+        __u64 val;
+
+        // reverse edian
+        __u32 *tmp = (__u32 *)(membase);    // since NVME_REG_CAP = 0, no need to change address
+        __u32 low, high;
+
+        low = le32_to_cpu(*tmp);
+        high = le32_to_cpu(*(tmp + 1));
+
+        val = ((__u64) high << 32) | low;
+        __u8 *p = (__u8 *)&val;
+        uint32_t cap_mpsmin = 1 <<  (12 + (p[6] & 0xf));
+
+        munmap(membase, getpagesize());
+
+        struct nvme_id_ctrl ctrl;
+        int ret = nvme_identify_ctrl(fd, &ctrl);
+        if (ret != 0)
+        {   
+        perror("ss nvme id ctrl error ");   
+            return ret;
+        }
+        // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
+        return (1 << (ctrl.mdts - 1)) * cap_mpsmin;     // With QEMU Bug!
+    }
 
     int get_free_lz_num()
     {
@@ -101,7 +210,7 @@ extern "C"
         char *buffer = (char *)calloc(1, nlb * lsb);
         char *log_buffer = (char *)calloc(1, lsb);
 
-        ret = nvme_read(zns_dev_ex->fd, zns_dev_ex->nsid, zone_address, nlb - 1, 0, 0, 0, 0, 0, nlb * lsb, buffer, 0, NULL);
+        ret = ss_nvme_device_io_with_mdts(zone_address, buffer, nlb * lsb, true);
         if (ret)
         {
             printf("ERROR: failed to read data block at 0x%lx, ret: %ld, during full merge\n", zone_address, ret);
@@ -212,16 +321,16 @@ extern "C"
             pthread_mutex_lock(&gc_mutex);
             while (!gc_thread_stop && get_free_lz_num() > zns_dev_ex->gc_watermark)
             {
-                printf("GC is sleeping\n");
+                // printf("GC is sleeping\n");
                 pthread_cond_wait(&gc_wakeup, &gc_mutex);
-                printf("GC in a the house\n");
+                // printf("GC in a the house\n");
             }
 
-            printf("GC is working now!\n");
+            // printf("GC is working now!\n");
 
             if (gc_thread_stop)
             {
-                printf("GC out\n");
+                // printf("GC out\n");
                 pthread_mutex_unlock(&gc_mutex);
                 break;
             }
@@ -264,8 +373,8 @@ extern "C"
                     {
                         printf("allocate data zone error: %d! zone_no:%ld \n", ret, zone_no);
                     }
-                    else
-                        printf("allocate data zone virtual number zone_no:%ld successfully!\n", zone_no);
+                    // else
+                        // printf("allocate data zone virtual number zone_no:%ld successfully!\n", zone_no);
                 }
             }
 
@@ -307,8 +416,22 @@ extern "C"
             return ret;
         }
 
+        if (params->force_reset)
+        {
+            ret = nvme_zns_mgmt_send(fd, info->nsid, 0, true, NVME_ZNS_ZSA_RESET, 0, NULL);
+            if (ret)
+            {
+                printf("ERROR: failed to reset all zones %d \n", ret);
+                return ret;
+            }
+
+            // info->data_zone_start = info->data_zone_end = params->log_zones * blocks_per_zone;
+            info->log_zone_start = info->log_zone_end = 0;
+        }
+
         (*my_dev)->lba_size_bytes = 1 << ns.lbaf[(ns.flbas & 0xf)].ds;
         (*my_dev)->tparams.zns_lba_size = (*my_dev)->lba_size_bytes;
+        info->mdts = get_mdts_size(info->fd, params->name);
 
         struct nvme_zone_report report;
         ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
@@ -355,19 +478,6 @@ extern "C"
         // record log_zone_start and log_zone_end for ms5
         // record data_zone_start and data_zone_end for ms5
 
-        if (params->force_reset)
-        {
-            ret = nvme_zns_mgmt_send(fd, info->nsid, 0, true, NVME_ZNS_ZSA_RESET, 0, NULL);
-            if (ret)
-            {
-                printf("ERROR: failed to reset all zones %d \n", ret);
-                return ret;
-            }
-
-            info->data_zone_start = info->data_zone_end = params->log_zones * blocks_per_zone;
-            info->log_zone_start = info->log_zone_end = 0;
-        }
-
         ret = pthread_create(&gc_thread_id, NULL, &gc_loop, NULL);
         if (ret)
         {
@@ -394,7 +504,7 @@ extern "C"
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
         for (uint64_t i = address; i < address + blocks * lba_s; i += lba_s)
         {
-            uint64_t entry;
+            uint64_t entry = log_mapping[i];
             // the top bit 1 means invalid
             if (log_mapping.find(address) == log_mapping.end() || (entry & ENTRY_INVALID))
             {
@@ -407,7 +517,7 @@ extern "C"
 
                 entry = data_mapping[zone_no] + address_2_offset(address);
             }
-            entry = log_mapping[i];
+            
             ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, lba_s, (char *)buffer + num_read, 0, NULL);
             if (ret)
             {
