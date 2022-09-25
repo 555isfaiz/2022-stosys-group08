@@ -245,6 +245,11 @@ extern "C"
                 if(zone_no==-1)
                 {
 		    printf("log_mapping is empty now\n");
+		    for(uint64_t i = 0; i < zns_dev_ex->log_zone_num_config;i++)
+		    {
+		       	    nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, i*zns_dev_ex->blocks_per_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
+		    }
+		    zns_dev_ex->log_zone_end=zns_dev_ex->log_zone_start;
                     break;
                 }
                 else
