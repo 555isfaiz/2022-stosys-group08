@@ -508,9 +508,9 @@ extern "C"
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
         for (uint64_t i = address; i < address + blocks * lba_s; i += lba_s)
         {
-            uint64_t entry = log_mapping[i];
+            uint64_t entry;
             // the top bit 1 means invalid
-            if (log_mapping.find(address) == log_mapping.end() || (entry & ENTRY_INVALID))
+            if (log_mapping.find(address) == log_mapping.end())
             {
                 uint64_t zone_no = address_2_zone(address);
                 if (data_mapping.find(zone_no) == data_mapping.end())
@@ -521,6 +521,8 @@ extern "C"
 
                 entry = data_mapping[zone_no] + address_2_offset(address);
             }
+            else
+                entry = log_mapping[i];
 
             ret = nvme_read(info->fd, info->nsid, (entry & ~ENTRY_INVALID), 0, 0, 0, 0, 0, 0, lba_s, (char *)buffer + num_read, 0, NULL);
             if (ret)
