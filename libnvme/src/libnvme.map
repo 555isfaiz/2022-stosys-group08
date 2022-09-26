@@ -258,6 +258,8 @@
 		nvme_identify_ns_csi;
 		nvme_zns_mgmt_send;
 		nvme_open;
+		nvme_scan_namespace;
+		nvme_free_ns;
 	local:
 		*;
 };

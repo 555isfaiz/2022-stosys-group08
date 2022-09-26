@@ -96,97 +96,69 @@ extern "C"
         return ret;
     }
 
-    // // from nvme-cli nvme.c
-    // void *mmap_registers(const char *devicename)
-    // {
-    //     nvme_root_t r;
-    //     r = nvme_scan(NULL);
-    //     if (!r)
-    //     {
-    //         printf("nvme_scan call failed with errno %d , null pointer returned in the scan call\n", -errno);
-    //         return NULL;
-    //     }
+    // from nvme-cli nvme.c
+    void *mmap_registers(const char *devicename)
+    {
+        nvme_ns_t nspace;
 
-    //     nvme_host_t h;
-    //     nvme_subsystem_t subsystem;
-    //     nvme_ctrl_t controller;
-    //     nvme_ns_t nspace;
+        char path[512];
+        void *membase;
+        int fd;
 
-    //     char path[512];
-    //     void *membase;
-    //     int fd;
+        nspace = nvme_scan_namespace(devicename);
+        snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
 
-    //     nspace = nvme_scan_namespace(devicename);
-    //     nvme_for_each_host(r, h)
-    //     {
-    //         nvme_for_each_subsystem(h, subsystem)
-    //         {
-    //             nvme_subsystem_for_each_ctrl(subsystem, controller)
-    //             {
-    //                 nvme_ctrl_for_each_ns(controller, nspace)
-    //                 {
-    //                     if (strcmp(nvme_ns_get_name(nspace), devicename) == 0)
-    //                     {
-    //                         snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
-    //                         goto loop_end;
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
+    loop_end:
+        fd = open(path, O_RDONLY);
+        if (fd < 0)
+        {
+            perror("can't open pci resource ");
+            return NULL;
+        }
 
+        membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
+        if (membase == MAP_FAILED)
+        {
+            perror("can't do mmap for device ");
+            membase = NULL;
+        }
 
-    // loop_end:
-    //     nvme_free_tree(r);
-    //     fd = open(path, O_RDONLY);
-    //     if (fd < 0)
-    //     {
-    //         perror("can't open pci resource ");
-    //         return NULL;
-    //     }
+        close(fd);
+        nvme_free_ns(nspace);
+        return membase;
+    }
 
-    //     membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
-    //     if (membase == MAP_FAILED)
-    //     {
-    //         perror("can't do mmap for device ");
-    //         membase = NULL;
-    //     }
+    // see 5.15.2.2 Identify Controller data structure (CNS 01h)
+    uint64_t get_mdts_size(int fd, const char *devicename)
+    {
+        void *membase = mmap_registers(devicename);
+        if (!membase)
+            return -1;
+        __u64 val;
 
-    //     close(fd);
-    //     return membase;
-    // }
+        // reverse edian
+        __u32 *tmp = (__u32 *)(membase); // since NVME_REG_CAP = 0, no need to change address
+        __u32 low, high;
 
-    // // see 5.15.2.2 Identify Controller data structure (CNS 01h)
-    // uint64_t get_mdts_size(int fd, const char *devicename)
-    // {
-    //     void *membase = mmap_registers(devicename);
-    //     if (!membase)
-    //         return -1;
-    //     __u64 val;
+        low = le32_to_cpu(*tmp);
+        high = le32_to_cpu(*(tmp + 1));
 
-    //     // reverse edian
-    //     __u32 *tmp = (__u32 *)(membase); // since NVME_REG_CAP = 0, no need to change address
-    //     __u32 low, high;
+        val = ((__u64)high << 32) | low;
+        __u8 *p = (__u8 *)&val;
+        uint32_t cap_mpsmin = 1 << (12 + (p[6] & 0xf));
 
-    //     low = le32_to_cpu(*tmp);
-    //     high = le32_to_cpu(*(tmp + 1));
+        munmap(membase, getpagesize());
 
-    //     val = ((__u64)high << 32) | low;
-    //     __u8 *p = (__u8 *)&val;
-    //     uint32_t cap_mpsmin = 1 << (12 + (p[6] & 0xf));
-
-    //     munmap(membase, getpagesize());
-
-    //     struct nvme_id_ctrl ctrl;
-    //     int ret = nvme_identify_ctrl(fd, &ctrl);
-    //     if (ret != 0)
-    //     {
-    //         perror("ss nvme id ctrl error ");
-    //         return ret;
-    //     }
-    //     // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
-    //     return (1 << (ctrl.mdts - 1)) * cap_mpsmin; // With QEMU Bug!
-    // }
+        struct nvme_id_ctrl ctrl;
+        int ret = nvme_identify_ctrl(fd, &ctrl);
+        if (ret != 0)
+        {
+            perror("ss nvme id ctrl error ");
+            return ret;
+        }
+        // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
+        return (1 << (ctrl.mdts - 1)) * cap_mpsmin; // With QEMU Bug!
+    }
 
     int get_free_lz_num(int offset)
     {
@@ -394,8 +366,8 @@ extern "C"
 
         (*my_dev)->lba_size_bytes = 1 << ns.lbaf[(ns.flbas & 0xf)].ds;
         (*my_dev)->tparams.zns_lba_size = (*my_dev)->lba_size_bytes;
-        // info->mdts = get_mdts_size(info->fd, params->name);
-        info->mdts = MDTS;
+        info->mdts = get_mdts_size(info->fd, params->name);
+        // info->mdts = MDTS;
 
         struct nvme_zone_report report;
         ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
