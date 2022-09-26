@@ -46,7 +46,6 @@ extern "C"
     std::unordered_map<int64_t, int64_t> data_mapping;
 
     pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_mutex_t gc_lock = PTHREAD_MUTEX_INITIALIZER;
     pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
     pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
     pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
@@ -224,7 +223,7 @@ extern "C"
         for (iter; iter != zone_set.end(); iter++)
         {
             uint64_t zone_no = find_next_empty_zone(), old_zone = -1;
-            if (data_mapping.find(iter->first) != data_mapping.end())
+            if (map_contains(data_mapping, iter->first))
             {
                 old_zone = data_mapping[iter->first];
                 ret = ss_nvme_device_io_with_mdts(old_zone, buffer, nlb * lsb, true);
@@ -337,14 +336,11 @@ extern "C"
             for (int i = old_log_start; i < old_log_end; i += zns_dev_ex->blocks_per_zone)
             {
                 uint64_t slba = ((i / zns_dev_ex->blocks_per_zone) % zns_dev_ex->log_zone_num_config) * zns_dev_ex->blocks_per_zone;
-                // printf("Reseting %lu, %lu, %lu\n", old_log_start, old_log_end, slba);
                 nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, slba, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
 
-            // zns_dev_ex->log_zone_end %= zns_dev_ex->blocks_per_zone * zns_dev_ex->log_zone_num_config;
             zns_dev_ex->log_zone_start = old_log_end;
             do_gc = false;
-            // printf("wake up main!\n");
             pthread_cond_signal(&gc_sleep);
             pthread_rwlock_unlock(&rwlock);
         }
@@ -561,7 +557,9 @@ extern "C"
         pthread_join(gc_thread_id, NULL);
 
         pthread_mutex_destroy(&gc_mutex);
+        pthread_rwlock_destroy(&rwlock);
         pthread_cond_destroy(&gc_wakeup);
+        pthread_cond_destroy(&gc_sleep);
 
         free(zns_dev_ex->zone_states);
         free(my_dev->_private);
