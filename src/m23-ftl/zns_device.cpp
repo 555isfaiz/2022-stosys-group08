@@ -313,7 +313,8 @@ extern "C"
             std::unordered_map<int64_t, int64_t>::iterator iter;
             for (iter = log_mapping.begin(); iter != log_mapping.end(); iter++)
             {
-                int64_t zone_no = address_2_zone(iter->first);
+                int64_t zone_no = address_2_zone(iter->first), address = iter->first;
+
                 if (!map_contains(zone_sets, zone_no))
                 {
                     zone_sets[zone_no] = new std::unordered_map<int64_t, int64_t>;
@@ -480,7 +481,7 @@ extern "C"
             if (read_data)
             {
                 uint64_t zone_no = address_2_zone(i);
-                if (data_mapping.find(zone_no) == data_mapping.end())
+                if (!map_contains(data_mapping, zone_no))
                 {
                     printf("ERROR: no data at 0x%lx\n", i);
                     return -1;
@@ -538,7 +539,7 @@ extern "C"
         info->log_zone_end += blocks;
         for (uint32_t i = 0; i < blocks; i++)
         {
-            log_mapping[address + i * my_dev->lba_size_bytes] = lz_end_before + i;
+            log_mapping[address + i * my_dev->lba_size_bytes] = res_lba + i;
         }
 
         if (release)
