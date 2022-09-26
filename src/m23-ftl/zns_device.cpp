@@ -46,8 +46,6 @@ extern "C"
     std::unordered_map<int64_t, int64_t> data_mapping;
 
     pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_mutex_t gc_lock = PTHREAD_MUTEX_INITIALIZER;
-    pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
     pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
     pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
 
@@ -97,9 +95,20 @@ extern "C"
         return ret;
     }
 
-    // from nvme-cli nvme.c
+    // // from nvme-cli nvme.c
     // void *mmap_registers(const char *devicename)
     // {
+    //     nvme_root_t r;
+    //     r = nvme_scan(NULL);
+    //     if (!r)
+    //     {
+    //         printf("nvme_scan call failed with errno %d , null pointer returned in the scan call\n", -errno);
+    //         return NULL;
+    //     }
+
+    //     nvme_host_t h;
+    //     nvme_subsystem_t subsystem;
+    //     nvme_ctrl_t controller;
     //     nvme_ns_t nspace;
 
     //     char path[512];
@@ -107,9 +116,27 @@ extern "C"
     //     int fd;
 
     //     nspace = nvme_scan_namespace(devicename);
-    //     snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
+    //     nvme_for_each_host(r, h)
+    //     {
+    //         nvme_for_each_subsystem(h, subsystem)
+    //         {
+    //             nvme_subsystem_for_each_ctrl(subsystem, controller)
+    //             {
+    //                 nvme_ctrl_for_each_ns(controller, nspace)
+    //                 {
+    //                     if (strcmp(nvme_ns_get_name(nspace), devicename) == 0)
+    //                     {
+    //                         snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
+    //                         goto loop_end;
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+
 
     // loop_end:
+    //     nvme_free_tree(r);
     //     fd = open(path, O_RDONLY);
     //     if (fd < 0)
     //     {
@@ -125,7 +152,6 @@ extern "C"
     //     }
 
     //     close(fd);
-    //     nvme_free_ns(nspace);
     //     return membase;
     // }
 
@@ -166,11 +192,6 @@ extern "C"
         return zns_dev_ex->log_zone_num_config - (zns_dev_ex->log_zone_end - zns_dev_ex->log_zone_start + offset) / zns_dev_ex->blocks_per_zone;
     }
 
-    int get_free_log_blocks()
-    {
-        return zns_dev_ex->log_zone_num_config * zns_dev_ex->blocks_per_zone - (zns_dev_ex->log_zone_end - zns_dev_ex->log_zone_start);
-    }
-
     // find the next empty zone address
     int find_next_empty_zone()
     {
@@ -191,28 +212,29 @@ extern "C"
         __u64 res_lba;
         int64_t ret, nlb = zns_dev_ex->blocks_per_zone, lsb = zns_dev->lba_size_bytes;
         char buffer[nlb * lsb] = {0};
+        char log_buffer[lsb] = {0};
 
         auto iter = zone_set.begin();
         for (iter; iter != zone_set.end(); iter++)
         {
-            uint64_t zone_no = find_next_empty_zone(), old_zone = -1;
-            if (data_mapping.find(iter->first) != data_mapping.end())
-            {
-                old_zone = data_mapping[iter->first];
-                ret = ss_nvme_device_io_with_mdts(old_zone, buffer, nlb * lsb, true);
-                if (ret)
-                {
-                    printf("ERROR: failed to read zone at 0x%lx, ret: %ld, during full merge\n", old_zone, ret);
-                    return ret;
-                }
-                zns_dev_ex->zone_states[old_zone / nlb] = EMPTY;
-            }
-
-            bool used_self = false;
+            int64_t zone_no = find_next_empty_zone(), old_zone = -1;
+            bool used_log = false;
             if (zone_no == -1)
             {
-                zone_no = old_zone;
-                used_self = true;
+                zone_no = (zns_dev_ex->log_zone_num_config - 1) * zns_dev_ex->blocks_per_zone; // use the last zone of log zones
+                used_log = true;
+            }
+
+            if (data_mapping.find(iter->first) != data_mapping.end())
+            {
+                ret = ss_nvme_device_io_with_mdts(data_mapping[iter->first], buffer, nlb * lsb, true);
+                if (ret)
+                {
+                    printf("ERROR: failed to read zone at 0x%lx, ret: %ld, during full merge\n", data_mapping[iter->first], ret);
+                    return ret;
+                }
+                zns_dev_ex->zone_states[data_mapping[iter->first] / nlb] = EMPTY;
+                old_zone = data_mapping[iter->first];
             }
             
             auto map = *(iter->second);
@@ -227,32 +249,31 @@ extern "C"
                 }
             }
 
-            if (used_self)
+            ret = ss_nvme_device_io_with_mdts(zone_no, buffer, nlb * lsb, false);
+            if (ret)
             {
-                ret = nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, old_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
-                if (ret)
-                {
-                    printf("ERROR: failed to reset zone at 0x%lx, ret: %ld, used log zone\n", old_zone, ret);
-                    return ret;
-                }
+                printf("ERROR: failed to write zone at 0x%lx, ret: %ld\n", zone_no, ret);
+                return ret;
+            }
 
+            if (used_log)
+            {
+                // means we didn't find a empty zone to write
+                // So write to the last zone of log for backup
+                // Reset the old zone and write to it
+                // Reset the last zone of log
+                nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, old_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
                 ret = ss_nvme_device_io_with_mdts(old_zone, buffer, nlb * lsb, false);
                 if (ret)
                 {
-                    printf("ERROR: failed to write zone at 0x%lx, ret: %ld, used log zone\n", old_zone, ret);
+                    printf("ERROR: failed to write zone at 0x%lx, ret: %ld, used log zone\n", zone_no, ret);
                     return ret;
                 }
                 zns_dev_ex->zone_states[old_zone / nlb] = FULL;
+                nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, zone_no, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
             else 
             {
-                ret = ss_nvme_device_io_with_mdts(zone_no, buffer, nlb * lsb, false);
-                if (ret)
-                {
-                    printf("ERROR: failed to write zone at 0x%lx, ret: %ld\n", zone_no, ret);
-                    return ret;
-                }
-
                 data_mapping[iter->first] = zone_no;
                 zns_dev_ex->zone_states[zone_no / nlb] = FULL;
 
@@ -274,12 +295,10 @@ extern "C"
             while (!gc_thread_stop && !do_gc)
             {
                 pthread_cond_wait(&gc_wakeup, &gc_mutex);
-                pthread_rwlock_wrlock(&rwlock);
             }
 
             if (gc_thread_stop)
             {
-                pthread_rwlock_unlock(&rwlock);
                 pthread_mutex_unlock(&gc_mutex);
                 break;
             }
@@ -288,18 +307,15 @@ extern "C"
             std::unordered_map<int64_t, int64_t>::iterator iter;
             for (iter = log_mapping.begin(); iter != log_mapping.end(); iter++)
             {
-                int64_t zone_no = address_2_zone(iter->first), address = iter->first;
-
+                int64_t zone_no = address_2_zone(iter->first);
                 if (!map_contains(zone_sets, zone_no))
                 {
                     zone_sets[zone_no] = new std::unordered_map<int64_t, int64_t>;
                 }
                 auto map = zone_sets[zone_no];
                 map->insert(std::pair<int64_t, int64_t>(address_2_offset(iter->first), iter->second));
+                iter->second &= ENTRY_INVALID;
             }
-            log_mapping.clear();
-            uint64_t old_log_start = zns_dev_ex->log_zone_start, old_log_end = zns_dev_ex->log_zone_end - (zns_dev_ex->log_zone_end % zns_dev_ex->blocks_per_zone);
-            pthread_mutex_unlock(&gc_mutex);
 
             int ret = do_merge(&zone_sets);
             if (ret)
@@ -307,19 +323,16 @@ extern "C"
                 printf("Error: GC failed, ret:%d\n", ret);
             }
 
-            for (int i = old_log_start; i < old_log_end; i += zns_dev_ex->blocks_per_zone)
+            for (int i = 0; i < zns_dev_ex->log_zone_num_config; i++)
             {
-                uint64_t slba = ((i / zns_dev_ex->blocks_per_zone) % zns_dev_ex->log_zone_num_config) * zns_dev_ex->blocks_per_zone;
-                // printf("Reseting %lu, %lu, %lu\n", old_log_start, old_log_end, slba);
-                nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, slba, false, NVME_ZNS_ZSA_RESET, 0, NULL);
+                nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, i * zns_dev_ex->blocks_per_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
+            zns_dev_ex->log_zone_end = zns_dev_ex->log_zone_start;
+            log_mapping.clear();
 
-            // zns_dev_ex->log_zone_end %= zns_dev_ex->blocks_per_zone * zns_dev_ex->log_zone_num_config;
-            zns_dev_ex->log_zone_start = old_log_end;
             do_gc = false;
-            // printf("wake up main!\n");
             pthread_cond_signal(&gc_sleep);
-            pthread_rwlock_unlock(&rwlock);
+            pthread_mutex_unlock(&gc_mutex);
         }
 
         return (void *)0;
@@ -443,7 +456,6 @@ extern "C"
         int32_t ret, lba_s = my_dev->lba_size_bytes;
         uint32_t blocks = size / lba_s, num_read = 0;
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
-        pthread_rwlock_rdlock(&rwlock);
         for (uint64_t i = address; i < address + blocks * lba_s; i += lba_s)
         {
             uint64_t entry;
@@ -451,7 +463,7 @@ extern "C"
             // the top bit 1 means invalid
             if (map_contains(log_mapping, i))
             {
-                entry = log_mapping.at(i);
+                entry = log_mapping[i];
                 read_data = (entry & ENTRY_INVALID);
             }
 
@@ -461,7 +473,7 @@ extern "C"
                 if (!map_contains(data_mapping, zone_no))
                 {
                     printf("ERROR: no data at 0x%lx\n", i);
-                    return -1;
+                    return ret;
                 }
 
                 entry = data_mapping[zone_no] + address_2_offset(i);
@@ -476,7 +488,6 @@ extern "C"
             num_read += lba_s;
         }
 
-        pthread_rwlock_unlock(&rwlock);
         return 0;
     }
 
@@ -490,38 +501,30 @@ extern "C"
 
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
         uint32_t blocks = size / my_dev->lba_size_bytes;
-        bool release = false;
-        if (get_free_lz_num(0) <= info->gc_watermark)
+        pthread_mutex_lock(&gc_mutex);
+        while (get_free_lz_num(blocks) <= info->gc_watermark)
         {
             do_gc = true;
             pthread_cond_signal(&gc_wakeup);
-            pthread_mutex_lock(&gc_mutex); 
-
-            while (get_free_log_blocks() <= 0)
-            {
-                pthread_cond_wait(&gc_sleep, &gc_mutex);
-            }
-            release = true;
+            pthread_cond_wait(&gc_sleep, &gc_mutex);
         }
 
         __u64 res_lba;
-        int32_t ret, lz_end_before = info->log_zone_end % (info->blocks_per_zone * info->log_zone_num_config), 
-                z_no = lz_end_before / info->blocks_per_zone;
+        int32_t ret, lz_end_before = info->log_zone_end, z_no = info->log_zone_end / info->blocks_per_zone;
         ret = nvme_zns_append(info->fd, info->nsid, z_no * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, size, buffer, 0, NULL, &res_lba);
         if (ret)
         {
-            printf("ERROR: failed to nvme_write at %d, ret: %d \n", z_no * info->blocks_per_zone, ret);
+            printf("ERROR: failed to write at 0x%d, ret: %d \n", info->log_zone_end, ret);
             return ret;
         }
 
-        info->log_zone_end += blocks;
+        info->log_zone_end = res_lba + 1;
         for (uint32_t i = 0; i < blocks; i++)
         {
-            log_mapping[address + i * my_dev->lba_size_bytes] = res_lba + i;
+            log_mapping[address + i * my_dev->lba_size_bytes] = lz_end_before + i;
         }
 
-        if (release)
-            pthread_mutex_unlock(&gc_mutex);    
+        pthread_mutex_unlock(&gc_mutex);
         return 0;
     }
 
