@@ -279,6 +279,7 @@ extern "C"
 
             if (gc_thread_stop)
             {
+                pthread_rwlock_unlock(&rwlock);
                 pthread_mutex_unlock(&gc_mutex);
                 break;
             }
