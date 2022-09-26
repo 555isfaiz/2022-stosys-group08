@@ -46,6 +46,7 @@ extern "C"
     std::unordered_map<int64_t, int64_t> data_mapping;
 
     pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_t gc_lock = PTHREAD_MUTEX_INITIALIZER;
     pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
     pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
     pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
@@ -97,68 +98,68 @@ extern "C"
     }
 
     // from nvme-cli nvme.c
-    void *mmap_registers(const char *devicename)
-    {
-        nvme_ns_t nspace;
+    // void *mmap_registers(const char *devicename)
+    // {
+    //     nvme_ns_t nspace;
 
-        char path[512];
-        void *membase;
-        int fd;
+    //     char path[512];
+    //     void *membase;
+    //     int fd;
 
-        nspace = nvme_scan_namespace(devicename);
-        snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
+    //     nspace = nvme_scan_namespace(devicename);
+    //     snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
 
-    loop_end:
-        fd = open(path, O_RDONLY);
-        if (fd < 0)
-        {
-            perror("can't open pci resource ");
-            return NULL;
-        }
+    // loop_end:
+    //     fd = open(path, O_RDONLY);
+    //     if (fd < 0)
+    //     {
+    //         perror("can't open pci resource ");
+    //         return NULL;
+    //     }
 
-        membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
-        if (membase == MAP_FAILED)
-        {
-            perror("can't do mmap for device ");
-            membase = NULL;
-        }
+    //     membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
+    //     if (membase == MAP_FAILED)
+    //     {
+    //         perror("can't do mmap for device ");
+    //         membase = NULL;
+    //     }
 
-        close(fd);
-        nvme_free_ns(nspace);
-        return membase;
-    }
+    //     close(fd);
+    //     nvme_free_ns(nspace);
+    //     return membase;
+    // }
 
-    // see 5.15.2.2 Identify Controller data structure (CNS 01h)
-    uint64_t get_mdts_size(int fd, const char *devicename)
-    {
-        void *membase = mmap_registers(devicename);
-        if (!membase)
-            return -1;
-        __u64 val;
+    // // see 5.15.2.2 Identify Controller data structure (CNS 01h)
+    // uint64_t get_mdts_size(int fd, const char *devicename)
+    // {
+    //     void *membase = mmap_registers(devicename);
+    //     if (!membase)
+    //         return -1;
+    //     __u64 val;
 
-        // reverse edian
-        __u32 *tmp = (__u32 *)(membase); // since NVME_REG_CAP = 0, no need to change address
-        __u32 low, high;
+    //     // reverse edian
+    //     __u32 *tmp = (__u32 *)(membase); // since NVME_REG_CAP = 0, no need to change address
+    //     __u32 low, high;
 
-        low = le32_to_cpu(*tmp);
-        high = le32_to_cpu(*(tmp + 1));
+    //     low = le32_to_cpu(*tmp);
+    //     high = le32_to_cpu(*(tmp + 1));
 
-        val = ((__u64)high << 32) | low;
-        __u8 *p = (__u8 *)&val;
-        uint32_t cap_mpsmin = 1 << (12 + (p[6] & 0xf));
+    //     val = ((__u64)high << 32) | low;
+    //     __u8 *p = (__u8 *)&val;
+    //     uint32_t cap_mpsmin = 1 << (12 + (p[6] & 0xf));
 
-        munmap(membase, getpagesize());
+    //     munmap(membase, getpagesize());
 
-        struct nvme_id_ctrl ctrl;
-        int ret = nvme_identify_ctrl(fd, &ctrl);
-        if (ret != 0)
-        {
-            perror("ss nvme id ctrl error ");
-            return ret;
-        }
-        // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
-        return (1 << (ctrl.mdts - 1)) * cap_mpsmin; // With QEMU Bug!
-    }
+    //     struct nvme_id_ctrl ctrl;
+    //     int ret = nvme_identify_ctrl(fd, &ctrl);
+    //     if (ret != 0)
+    //     {
+    //         perror("ss nvme id ctrl error ");
+    //         return ret;
+    //     }
+    //     // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
+    //     return (1 << (ctrl.mdts - 1)) * cap_mpsmin; // With QEMU Bug!
+    // }
 
     int get_free_lz_num(int offset)
     {
@@ -195,7 +196,7 @@ extern "C"
         for (iter; iter != zone_set.end(); iter++)
         {
             uint64_t zone_no = find_next_empty_zone(), old_zone = -1;
-            if (map_contains(data_mapping, iter->first))
+            if (data_mapping.find(iter->first) != data_mapping.end())
             {
                 old_zone = data_mapping[iter->first];
                 ret = ss_nvme_device_io_with_mdts(old_zone, buffer, nlb * lsb, true);
@@ -308,11 +309,14 @@ extern "C"
             for (int i = old_log_start; i < old_log_end; i += zns_dev_ex->blocks_per_zone)
             {
                 uint64_t slba = ((i / zns_dev_ex->blocks_per_zone) % zns_dev_ex->log_zone_num_config) * zns_dev_ex->blocks_per_zone;
+                // printf("Reseting %lu, %lu, %lu\n", old_log_start, old_log_end, slba);
                 nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, slba, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
 
+            // zns_dev_ex->log_zone_end %= zns_dev_ex->blocks_per_zone * zns_dev_ex->log_zone_num_config;
             zns_dev_ex->log_zone_start = old_log_end;
             do_gc = false;
+            // printf("wake up main!\n");
             pthread_cond_signal(&gc_sleep);
             pthread_rwlock_unlock(&rwlock);
         }
@@ -529,9 +533,7 @@ extern "C"
         pthread_join(gc_thread_id, NULL);
 
         pthread_mutex_destroy(&gc_mutex);
-        pthread_rwlock_destroy(&rwlock);
         pthread_cond_destroy(&gc_wakeup);
-        pthread_cond_destroy(&gc_sleep);
 
         free(zns_dev_ex->zone_states);
         free(my_dev->_private);

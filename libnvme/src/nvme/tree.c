@@ -238,7 +238,7 @@ static void __nvme_free_ns(struct nvme_ns *n)
 /* Stub for SWIG */
 void nvme_free_ns(struct nvme_ns *n)
 {
-	__nvme_free_ns(n);
+	
 }
 
 static void __nvme_free_subsystem(struct nvme_subsystem *s)
