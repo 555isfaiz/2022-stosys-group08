@@ -461,7 +461,7 @@ extern "C"
             uint64_t entry;
             bool read_data = true;
             // the top bit 1 means invalid
-            if (log_mapping.find(i) != log_mapping.end())
+            if (map_contains(log_mapping, i))
             {
                 entry = log_mapping[i];
                 read_data = (entry & ENTRY_INVALID);
@@ -470,7 +470,7 @@ extern "C"
             if (read_data)
             {
                 uint64_t zone_no = address_2_zone(i);
-                if (data_mapping.find(zone_no) == data_mapping.end())
+                if (!map_contains(data_mapping, zone_no))
                 {
                     printf("ERROR: no data at 0x%lx\n", i);
                     return ret;
