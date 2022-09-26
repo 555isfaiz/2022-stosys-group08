@@ -366,8 +366,8 @@ extern "C"
 
         (*my_dev)->lba_size_bytes = 1 << ns.lbaf[(ns.flbas & 0xf)].ds;
         (*my_dev)->tparams.zns_lba_size = (*my_dev)->lba_size_bytes;
-        info->mdts = get_mdts_size(info->fd, params->name);
-        // info->mdts = MDTS;
+        // info->mdts = get_mdts_size(info->fd, params->name);
+        info->mdts = MDTS;
 
         struct nvme_zone_report report;
         ret = nvme_zns_mgmt_recv(fd, info->nsid, 0,
