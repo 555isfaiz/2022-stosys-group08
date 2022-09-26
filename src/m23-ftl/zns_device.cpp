@@ -47,6 +47,7 @@ extern "C"
 
     pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
     pthread_mutex_t gc_lock = PTHREAD_MUTEX_INITIALIZER;
+    pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
     pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
     pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
 
@@ -301,6 +302,7 @@ extern "C"
             while (!gc_thread_stop && !do_gc)
             {
                 pthread_cond_wait(&gc_wakeup, &gc_mutex);
+                pthread_rwlock_wrlock(&rwlock);
             }
 
             if (gc_thread_stop)
@@ -344,6 +346,7 @@ extern "C"
             do_gc = false;
             // printf("wake up main!\n");
             pthread_cond_signal(&gc_sleep);
+            pthread_rwlock_unlock(&rwlock);
         }
 
         return (void *)0;
@@ -467,6 +470,7 @@ extern "C"
         int32_t ret, lba_s = my_dev->lba_size_bytes;
         uint32_t blocks = size / lba_s, num_read = 0;
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
+        pthread_rwlock_rdlock(&rwlock);
         for (uint64_t i = address; i < address + blocks * lba_s; i += lba_s)
         {
             uint64_t entry;
@@ -499,6 +503,7 @@ extern "C"
             num_read += lba_s;
         }
 
+        pthread_rwlock_unlock(&rwlock);
         return 0;
     }
 

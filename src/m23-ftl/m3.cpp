@@ -188,9 +188,9 @@ static int wr_full_device_verify(struct user_zns_device *dev,
     free(b1);
     free(b2);
     close(fd);
-    ret = remove(tmp_file);
-    if(ret != 0){
-        printf("Error: file deleting failed with ret %d \n", ret);
+    int rret = remove(tmp_file);
+    if(rret != 0){
+        printf("Error: file deleting failed with ret %d \n", rret);
     }
     return ret;
 }
