@@ -317,7 +317,6 @@ extern "C"
             // zns_dev_ex->log_zone_end %= zns_dev_ex->blocks_per_zone * zns_dev_ex->log_zone_num_config;
             zns_dev_ex->log_zone_start = old_log_end;
             do_gc = false;
-            // printf("wake up main!\n");
             pthread_cond_signal(&gc_sleep);
             pthread_rwlock_unlock(&rwlock);
         }
@@ -494,8 +493,8 @@ extern "C"
         if (get_free_lz_num(0) <= info->gc_watermark)
         {
             do_gc = true;
-            pthread_cond_signal(&gc_wakeup);
             pthread_mutex_lock(&gc_mutex); 
+            pthread_cond_broadcast(&gc_wakeup);
 
             while (get_free_log_blocks() <= 0)
             {
