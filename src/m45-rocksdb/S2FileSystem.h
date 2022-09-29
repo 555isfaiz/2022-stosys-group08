@@ -30,6 +30,7 @@ SOFTWARE.
 
 #include <zns_device.h>
 #include <iostream>
+#include <unordered_map>
 
 namespace ROCKSDB_NAMESPACE {
 
