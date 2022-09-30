@@ -34,8 +34,15 @@ SOFTWARE.
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+#include <list>
 
 namespace ROCKSDB_NAMESPACE {
+
+    #define CACHE_SEG_THRESHOLD 4
+
+    class S2FSObject;
+    class S2FSBlock;
+    class S2FSSegment;
 
     class S2FileSystem : public FileSystem {
     public:
@@ -131,11 +138,16 @@ namespace ROCKSDB_NAMESPACE {
         IOStatus ReuseWritableFile(const std::string &fname, const std::string &old_fname, const FileOptions &file_opts,
                                    std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg);
 
-    private:
         struct user_zns_device *_zns_dev;
+        struct zns_device_extra_info * _zns_dev_ex;
+
+    private:
         std::string _uri;
         const std::string _fs_delimiter = "/";
-        std::vector<S2FSSegment> _cache;
+        std::list<S2FSSegment*> _cache;
+        uint64_t wp_end;
+
+        S2FSSegment *ReadSegment();
     };
 }
 

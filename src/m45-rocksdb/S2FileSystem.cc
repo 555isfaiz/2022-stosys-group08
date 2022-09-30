@@ -48,11 +48,50 @@ namespace ROCKSDB_NAMESPACE {
             std::cout << "Error: " << uri_db_path << " failed to open the device " << device.c_str() << "\n";
             std::cout << "Error: ret " << ret << "\n";
         }
+        this->_zns_dev_ex = (struct zns_device_extra_info *)this->_zns_dev->_private;
         assert (ret == 0);
         assert(this->_zns_dev->lba_size_bytes != 0);
         assert(this->_zns_dev->capacity_bytes != 0);
         ss_dprintf(DBG_FS_1, "device %s is opened and initialized, reported LBA size is %u and capacity %lu \n",
                    device.c_str(), this->_zns_dev->lba_size_bytes, this->_zns_dev->capacity_bytes);
+
+        S2FSObject::_fs = this;
+    }
+
+    S2FSSegment *S2FileSystem::ReadSegment()
+    {
+        uint64_t segm_start = segment_2_addr(addr_2_segment(wp_end));
+        S2FSSegment *s = new S2FSSegment(segm_start);
+        if (segm_start)
+        {
+            char *buf = (char *)calloc(S2FSSegment::Size(), sizeof(char));
+
+            int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSSegment::Size());
+            if (ret)
+            {
+                std::cout << "Error: reading segment from WP, ret: " << ret << "\n";
+                return NULL;
+            }
+
+            s->Deserialize(buf);
+        }
+        else
+        {
+            // wp_end == 0. So we have a brand new flash here.
+            // set up root directory
+            S2FSBlock *b;
+            s->Allocate("/", ITYPE_DIR_INODE, S2FSBlock::Size(), &b);
+        }
+
+        if (_cache.size() >= CACHE_SEG_THRESHOLD)
+        {
+            auto ptr = _cache.front();
+            _cache.pop_front();
+            delete ptr;
+        }
+
+        _cache.push_back(s);
+        return s;
     }
 
     S2FileSystem::~S2FileSystem() {
@@ -144,6 +183,16 @@ namespace ROCKSDB_NAMESPACE {
     // Creates directory if missing. Return Ok if it exists, or successful in
     // Creating.
     IOStatus S2FileSystem::CreateDirIfMissing(const std::string &dirname, const IOOptions &options, IODebugContext *dbg) {
+        for (auto seg : _cache)
+        {
+            auto ptr = seg->LookUp(dirname);
+            if (ptr)
+            {
+                return IOStatus::OK();
+            }
+        }
+
+
         return IOStatus::IOError(__FUNCTION__);
     }
 

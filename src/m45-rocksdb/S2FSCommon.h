@@ -5,6 +5,7 @@
 #include "rocksdb/io_status.h"
 #include "rocksdb/file_system.h"
 #include "rocksdb/status.h"
+#include "S2FileSystem.h"
 
 #include <list>
 #include <atomic>
@@ -15,6 +16,14 @@
 
 namespace ROCKSDB_NAMESPACE
 {
+
+    #define MAX_NAME_LENGTH 32
+    #define map_contains(map, key)  (map.find(key) != map.end())
+    #define addr_2_segment(addr)    (addr / S2FSSegment::Size())
+    #define segment_2_addr(segm)    (segm * S2FSSegment::Size())
+    #define addr_2_block(addr)    (addr / S2FSBlock::Size())
+    #define block_2_addr(bloc)    (bloc * S2FSBlock::Size())
+
     static std::atomic_int32_t id_alloc(0);
 
     enum INodeType
@@ -25,15 +34,16 @@ namespace ROCKSDB_NAMESPACE
         ITYPE_DIR_DATA
     };
 
+    class S2FileSystem;
+
     class S2FSObject
     {
     private:
-        uint32_t _size;
         pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
     public:
-        S2FSObject(uint32_t size)
-        : _size(size) {}
-        ~S2FSObject();
+        static S2FileSystem *_fs;
+        S2FSObject(){}
+        ~S2FSObject(){}
 
         inline int Lock() { return pthread_mutex_lock(&_mutex); }
         inline int Unlock() { return pthread_mutex_unlock(&_mutex); }
@@ -50,40 +60,67 @@ namespace ROCKSDB_NAMESPACE
         uint64_t _create_time;
         // ...
     public:
-        S2FSFileAttr(/* args */);
-        ~S2FSFileAttr();
+        S2FSFileAttr(/* args */){}
+        ~S2FSFileAttr(){}
+
+        char *Serialize();                  // for M5
+        void Deserialize(char *buffer);     // for M5
     };
 
     class S2FSBlock : public S2FSObject
     {
     private:
+        // Only valid for INode types. Indicating next INode global offset
+        uint64_t _next;
+        // Only valid for INode types. Indicating previous INode global offset
+        uint64_t _prev;
+        std::string _name;
         uint32_t _id;
         INodeType _type;
         std::list<uint64_t> _offsets;
-        std::list<S2FSFileAttr> _file_attrs;
-        char *content;
+        std::list<S2FSFileAttr*> _file_attrs;
+        char *_content;
     public:
-        S2FSBlock(/* args */);
-        ~S2FSBlock();
+        S2FSBlock(/* args */){}
+        ~S2FSBlock(){}
+
+        char *Serialize(){}                  // for M5
+        void Deserialize(char *buffer){}     // for M5
+
+        inline void AddOffset(uint64_t offset) { _offsets.push_back(offset); }
+
+        static uint64_t Size();
     };
 
     class S2FSSegment : public S2FSObject
     {
     private:
-        struct user_zns_device * _zns_dev;
-        uint64_t _addr_start;        // should be aligned to zone_no
+        // should be aligned to zone_no
+        uint64_t _addr_start;
+        /* k: inode id, v: in-segment offset*/
         std::unordered_map<uint32_t, uint64_t> _inode_map;
-        std::vector<S2FSBlock> _blocks;
+        /* k: name, v: inode id*/
+        std::unordered_map<std::string, uint32_t> _name_2_inode;
+        std::vector<S2FSBlock*> _blocks;
     public:
-        S2FSSegment(struct user_zns_device * zns_dev, uint32_t size, uint64_t addr);
-        ~S2FSSegment();
+        S2FSSegment(uint64_t addr);
+        ~S2FSSegment(){}
 
-        int Allocate();
+        char *Serialize();                  // for M5
+        void Deserialize(char *buffer);     // for M5
+
+        // return: in-segment offset
+        uint64_t GetEmptyBlock();
+        uint64_t GetEmptyBlockNum();
+        S2FSBlock *LookUp(const std::string &name);
+        uint64_t Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res);
         int Free();
         int Read();
         int Write();
         int Flush();
         int OnGC();
+
+        static uint64_t Size();
     };
 }
 

@@ -53,22 +53,6 @@ extern "C"
     bool gc_thread_stop = false;
     bool do_gc = false;
 
-    struct zns_device_extra_info
-    {
-        int fd;
-        uint32_t nsid;
-        uint32_t blocks_per_zone;
-        uint32_t log_zone_start;
-        uint32_t log_zone_end;
-        uint32_t data_zone_start; // for milestone 5
-        uint32_t data_zone_end;   // for milestone 5
-        uint8_t *zone_states;
-        uint32_t mdts;
-        int gc_watermark;
-        int log_zone_num_config;
-        // ...
-    };
-
     struct user_zns_device *zns_dev;
     struct zns_device_extra_info *zns_dev_ex;
 
