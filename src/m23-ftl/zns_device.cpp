@@ -456,8 +456,9 @@ extern "C"
                 uint64_t zone_no = address_2_zone(i);
                 if (!map_contains(data_mapping, zone_no))
                 {
-                    printf("ERROR: no data at 0x%lx\n", i);
-                    return ret;
+                    // nothing at this address, return 0s.
+                    memset(buffer, 0, size);
+                    return 0;
                 }
 
                 entry = data_mapping[zone_no] + address_2_offset(i);

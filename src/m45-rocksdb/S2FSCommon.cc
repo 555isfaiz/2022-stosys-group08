@@ -6,6 +6,49 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::Size() { return _fs->_zns_dev->lba_size_bytes; }
 
+    S2FSBlock *S2FSBlock::DirectoryLookUp(std::string &name)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: looking up dir in a non-dir inode type: " << _type << " name: " << name << " during S2FSBlock::DirectoryLookUp."
+                          << "\n";
+            return NULL;
+        }
+
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegmentFromCache(addr_2_segment(off));
+            if (s)
+            {
+                data = s->GetBlockByOffset(off);
+            }
+            else
+            {
+                data = new S2FSBlock(ITYPE_DIR_DATA);
+                char *buf = (char *)calloc(S2FSBlock::Size(), sizeof(char));
+                int ret = zns_udevice_read(_fs->_zns_dev, off, buf, S2FSBlock::Size());
+                if (ret)
+                {
+                    std::cout << "Error: reading block at: " << off << " during S2FSBlock::DirectoryLookUp."
+                          << "\n";
+                }
+                data->Deserialize(buf);
+                free(buf);
+            }
+
+            for (auto attr : _file_attrs)
+            {
+                if (attr->Name() == name)
+                {
+                    auto s = _fs->ReadSegment(addr_2_segment(attr->Offset()));
+                    return s->GetBlockByOffset(addr_2_inseg_offset(attr->Offset()));
+                }
+            }
+        }
+        return NULL;
+    }
+
     S2FSSegment::S2FSSegment(uint64_t addr)
     : _addr_start(addr)
     {
@@ -21,7 +64,7 @@ namespace ROCKSDB_NAMESPACE
         {
             if (_blocks.at(i) != NULL)
             {
-                return block_2_addr(i);
+                return block_2_inseg_offset(i);
             }
         }
         return 0;
@@ -41,12 +84,39 @@ namespace ROCKSDB_NAMESPACE
         return num;
     }
 
+    S2FSBlock *S2FSSegment::GetBlockByOffset(uint64_t offset)
+    {
+        S2FSBlock *block = NULL;
+        Lock();
+        block = _blocks.at(addr_2_block(offset));
+        // block is occupied, but not present in memory
+        if ((uint64_t)block == 1)
+        {
+            char *buf = (char *)calloc(S2FSBlock::Size(), sizeof(char));
+            int ret = zns_udevice_read(_fs->_zns_dev, offset + _addr_start, buf, S2FSBlock::Size());
+            if (ret)
+            {
+                std::cout << "Error: reading block at: " << offset + _addr_start << " during S2FSSegment::LookUp."
+                          << "\n";
+            }
+            else
+            {
+                S2FSBlock *block = new S2FSBlock;
+                block->Deserialize(buf);
+                _blocks[addr_2_block(offset)] = block;
+            }
+            free(buf);
+        }
+        Unlock();
+        return block;
+    }
+
     S2FSBlock *S2FSSegment::LookUp(const std::string &name)
     {
         if (map_contains(_name_2_inode, name))
         {
             auto addr = _inode_map.at(_name_2_inode.at(name));
-            return _blocks.at(addr / _fs->_zns_dev->lba_size_bytes);
+            return GetBlockByOffset(addr);
         }
         return NULL;
     }
@@ -60,7 +130,7 @@ namespace ROCKSDB_NAMESPACE
         {
             if (!map_contains(_name_2_inode, name))
             {
-                std::cout << "Error: allocating data block for not existing file: " << name << "\n";
+                std::cout << "Error: allocating data block for not existing file: " << name << " during S2FSSegment::Allocate." << "\n";
                 Unlock();
                 return NULL;
             }
@@ -72,14 +142,16 @@ namespace ROCKSDB_NAMESPACE
             // need at least 2 blocks. one for inode, one for data.
             if (GetEmptyBlockNum() >= 2)
             {
-                inode = new S2FSBlock;
+                inode = new S2FSBlock(type);
                 uint64_t empty = GetEmptyBlock();
                 _blocks[addr_2_block(empty)] = inode;
+                _name_2_inode[name] = inode->ID();
+                _inode_map[inode->ID()] = empty;
             }
         }
         else
         {
-            std::cout << "Error: allocating unknown block type: " << type << "\n";
+            std::cout << "Error: allocating unknown block type: " << type << " during S2FSSegment::Allocate." << "\n";
         }
 
         if (inode)
@@ -88,7 +160,7 @@ namespace ROCKSDB_NAMESPACE
             uint64_t empty = GetEmptyBlock();
             while (empty && allocated < size)
             {
-                inode->AddOffset(empty);
+                inode->AddOffset(empty + Addr());
                 S2FSBlock *data = new S2FSBlock;
                 _blocks[addr_2_block(empty)] = data;
                 allocated += S2FSBlock::Size();

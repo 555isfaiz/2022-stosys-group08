@@ -58,27 +58,45 @@ namespace ROCKSDB_NAMESPACE {
         S2FSObject::_fs = this;
     }
 
-    S2FSSegment *S2FileSystem::ReadSegment()
+    S2FileSystem::~S2FileSystem() {
+    }
+
+    S2FSSegment *S2FileSystem::ReadSegmentFromCache(uint64_t from)
     {
-        uint64_t segm_start = segment_2_addr(addr_2_segment(wp_end));
-        S2FSSegment *s = new S2FSSegment(segm_start);
-        if (segm_start)
+        for (auto s : _cache)
         {
-            char *buf = (char *)calloc(S2FSSegment::Size(), sizeof(char));
-
-            int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSSegment::Size());
-            if (ret)
+            if (s->Addr() == from)
             {
-                std::cout << "Error: reading segment from WP, ret: " << ret << "\n";
-                return NULL;
+                return s;
             }
-
-            s->Deserialize(buf);
         }
-        else
+        return NULL;
+    }
+
+    S2FSSegment *S2FileSystem::ReadSegmentFromMem()
+    {
+        return ReadSegment(wp_end);
+    }
+
+
+    S2FSSegment *S2FileSystem::ReadSegmentFromMem(uint64_t from)
+    {
+        uint64_t segm_start = segment_2_addr(addr_2_segment(from));
+        S2FSSegment *s = new S2FSSegment(segm_start);
+        char *buf = (char *)calloc(S2FSSegment::Size(), sizeof(char));
+
+        int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSSegment::Size());
+        if (ret)
         {
-            // wp_end == 0. So we have a brand new flash here.
-            // set up root directory
+            std::cout << "Error: reading segment from WP, ret: " << ret << "\n";
+            return NULL;
+        }
+
+        s->Deserialize(buf);
+        // First segment is empty. So we have a brand new flash here.
+        // set up root directory
+        if (!segm_start && s->GetEmptyBlockNum() == _zns_dev_ex->blocks_per_zone - 1)
+        {
             S2FSBlock *b;
             s->Allocate("/", ITYPE_DIR_INODE, S2FSBlock::Size(), &b);
         }
@@ -94,7 +112,89 @@ namespace ROCKSDB_NAMESPACE {
         return s;
     }
 
-    S2FileSystem::~S2FileSystem() {
+    S2FSSegment *S2FileSystem::ReadSegment(uint64_t from)
+    {
+        auto s = ReadSegmentFromCache(from);
+        if (s)
+            return s;
+
+        return ReadSegmentFromMem(from);
+    }
+
+    S2FSSegment *S2FileSystem::FindNonFullSegment()
+    {
+        for (auto s : _cache)
+        {
+            if (s->GetEmptyBlockNum() >= 2)
+            {
+                return s;
+            }
+        }
+
+        for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
+        {
+            // should save some time here
+            for (auto s : _cache)
+            {
+                if (s->Addr() == i)
+                    continue;
+            }
+
+            auto seg = ReadSegment(i);
+            if (seg->GetEmptyBlockNum() >= 2)
+            {
+                return seg;
+            }
+        }
+        return NULL;
+    }
+
+    bool S2FileSystem::DirectoryLookUp(std::string &name, S2FSBlock *parent, S2FSBlock **res)
+    {
+        auto del_pos = name.find('/');
+        S2FSBlock *block = NULL;
+        std::string next;
+        if (del_pos == 0)
+        {
+            S2FSSegment *segment = ReadSegment(0);
+            block = segment->LookUp("/");
+            next = name.substr(del_pos + 1, name.length() - del_pos - 1);
+        }
+        else if (name.length() != 0)
+        {
+            std::string n;
+            if (del_pos != name.npos)
+            {
+                n = name.substr(0, del_pos);
+                next = name.substr(del_pos + 1, name.length() - del_pos - 1);
+            }
+            else
+            {
+                n = name;
+            }
+            block = parent->DirectoryLookUp(n);
+        }
+
+        if (block)
+        {
+            if (!next.empty())
+            {
+                auto ret = DirectoryLookUp(next, block, res);
+                if (*res != block)
+                    delete block;
+                return ret;
+            }
+            else
+            {
+                *res = block;
+                return true;
+            }
+        }
+        else
+        {
+            *res = parent;
+            return false;
+        }
     }
 
     // Create a brand new sequentially-readable file with the specified name.
@@ -183,16 +283,14 @@ namespace ROCKSDB_NAMESPACE {
     // Creates directory if missing. Return Ok if it exists, or successful in
     // Creating.
     IOStatus S2FileSystem::CreateDirIfMissing(const std::string &dirname, const IOOptions &options, IODebugContext *dbg) {
-        for (auto seg : _cache)
-        {
-            auto ptr = seg->LookUp(dirname);
-            if (ptr)
-            {
-                return IOStatus::OK();
-            }
-        }
+        std::string name = dirname;
+        S2FSBlock *inode;
+        auto exist = DirectoryLookUp(name, NULL, &inode);
+        if (exist)
+            return IOStatus::OK();
 
-
+        auto segment = FindNonFullSegment();
+        // segment->Allocate(dir);
         return IOStatus::IOError(__FUNCTION__);
     }
 
