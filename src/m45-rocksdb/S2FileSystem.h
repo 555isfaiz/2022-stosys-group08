@@ -27,10 +27,13 @@ SOFTWARE.
 #include "rocksdb/io_status.h"
 #include "rocksdb/file_system.h"
 #include "rocksdb/status.h"
+#include "S2FSImpl.h"
+#include "S2FSCommon.h"
 
 #include <zns_device.h>
 #include <iostream>
 #include <unordered_map>
+#include <vector>
 
 namespace ROCKSDB_NAMESPACE {
 
@@ -132,6 +135,7 @@ namespace ROCKSDB_NAMESPACE {
         struct user_zns_device *_zns_dev;
         std::string _uri;
         const std::string _fs_delimiter = "/";
+        std::vector<S2FSSegment> _cache;
     };
 }
 
