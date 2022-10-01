@@ -87,7 +87,7 @@ namespace ROCKSDB_NAMESPACE
     S2FSBlock *S2FSSegment::GetBlockByOffset(uint64_t offset)
     {
         S2FSBlock *block = NULL;
-        Lock();
+        ReadLock();
         block = _blocks.at(addr_2_block(offset));
         // block is occupied, but not present in memory
         if ((uint64_t)block == 1)
@@ -123,7 +123,7 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSSegment::Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res)
     {
-        Lock();
+        WriteLock();
         uint64_t allocated = 0;
         S2FSBlock *inode;
         if (type == ITYPE_DIR_DATA || type == ITYPE_FILE_DATA)

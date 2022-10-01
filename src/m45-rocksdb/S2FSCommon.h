@@ -40,15 +40,17 @@ namespace ROCKSDB_NAMESPACE
     class S2FSObject
     {
     private:
-        pthread_mutex_t _mutex = PTHREAD_MUTEX_INITIALIZER;
+        pthread_rwlock_t _rwlock = PTHREAD_RWLOCK_INITIALIZER;
     public:
         static S2FileSystem *_fs;
         S2FSObject(){}
         ~S2FSObject(){}
 
-        inline int Lock() { return pthread_mutex_lock(&_mutex); }
-        inline int Unlock() { return pthread_mutex_unlock(&_mutex); }
+        inline int ReadLock() { return pthread_rwlock_rdlock(&_rwlock); }
+        inline int WriteLock() { return pthread_rwlock_wrlock(&_rwlock); }
+        inline int Unlock() { return pthread_rwlock_unlock(&_rwlock); }
 
+        // Need to free the return value
         virtual char *Serialize() = 0;                  // for M5
         virtual void Deserialize(char *buffer) = 0;     // for M5
     };
@@ -67,6 +69,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSFileAttr(/* args */){}
         ~S2FSFileAttr(){}
 
+        // Need to free the return value
         char *Serialize(){}                  // for M5
         void Deserialize(char *buffer){}     // for M5
 
@@ -93,6 +96,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock(){}
         ~S2FSBlock(){}
 
+        // Need to free the return value
         char *Serialize(){}                  // for M5
         void Deserialize(char *buffer){}     // for M5
 
@@ -117,6 +121,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSSegment(uint64_t addr);
         ~S2FSSegment(){}
 
+        // Need to free the return value
         char *Serialize();                  // for M5
         void Deserialize(char *buffer);     // for M5
 
