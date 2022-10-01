@@ -4,6 +4,28 @@ namespace ROCKSDB_NAMESPACE
 {
     S2FileSystem *S2FSObject::_fs;
 
+    void S2FSFileAttr::Serialize(char *buffer)
+    {
+        strcpy(buffer, _name.c_str());
+        uint64_t ptr = MAX_NAME_LENGTH;
+        // Use the highest bit of size to indicate whether it is a directory or not
+        *(uint64_t *)(buffer + ptr) = _is_dir ? (_size & 1 << 63) : _size;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _create_time;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _offset;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _inode_id;
+    }
+
+    void S2FSFileAttr::Deserialize(char *buffer)
+    {
+        uint64_t ptr = MAX_NAME_LENGTH;
+        Name(std::string(buffer, MAX_NAME_LENGTH))
+        ->IsDir(*(uint64_t *)(buffer + ptr) & (1 << 63))
+        ->Size(*(uint64_t *)(buffer + ptr) | (1 << 63))
+        ->CreateTime(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
+        ->Offset(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
+        ->InodeID(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))));
+    }
+
     uint64_t S2FSBlock::Size() { return _fs->_zns_dev->lba_size_bytes; }
 
     S2FSBlock *S2FSBlock::DirectoryLookUp(std::string &name)
@@ -68,32 +90,80 @@ namespace ROCKSDB_NAMESPACE
 
     void S2FSBlock::SerializeFileInode(char *buffer)
     {
-
+        *buffer = _type << 4;
+        uint64_t ptr = 0;
+        *(uint64_t *)(buffer + (ptr += 1)) = _next;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _prev;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _id;
+        ptr += sizeof(uint64_t);
+        for (auto iter = _offsets.begin(); iter != _offsets.end(); iter++, ptr += sizeof(uint64_t))
+        {
+            *(uint64_t *)(buffer + ptr) = *iter;
+        }
     }
 
     void S2FSBlock::DeserializeFileInode(char *buffer)
     {
-
+        uint64_t ptr = 0;
+        _next = *(uint64_t *)(buffer + (ptr += 1));
+        _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
+        _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
+        ptr += sizeof(uint64_t);
+        while (*(uint64_t *)(buffer + ptr))
+        {
+            _offsets.push_back(*(uint64_t *)(buffer + ptr));
+        }
     }
 
     void S2FSBlock::SerializeDirInode(char *buffer)
     {
-
+        *buffer = _type << 4;
+        uint64_t ptr = 0;
+        *(uint64_t *)(buffer + (ptr += 1)) = _next;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _prev;
+        *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _id;
+        strcpy((buffer + (ptr += sizeof(uint64_t))), _name.c_str());
+        ptr += MAX_NAME_LENGTH;
+        for (auto iter = _offsets.begin(); iter != _offsets.end(); iter++, ptr += sizeof(uint64_t))
+        {
+            *(uint64_t *)(buffer + ptr) = *iter;
+        }
     }
 
     void S2FSBlock::DeserializeDirInode(char *buffer)
     {
-
+        uint64_t ptr = 0;
+        _next = *(uint64_t *)(buffer + (ptr += 1));
+        _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
+        _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
+        _name = std::string(buffer + (ptr += sizeof(uint64_t)), MAX_NAME_LENGTH);
+        ptr += MAX_NAME_LENGTH;
+        while (*(uint64_t *)(buffer + ptr))
+        {
+            _offsets.push_back(*(uint64_t *)(buffer + ptr));
+        }
     }
 
     void S2FSBlock::SerializeDirData(char *buffer)
     {
-
+        *buffer = _type << 4;
+        uint64_t ptr = 1;
+        for (auto fa : _file_attrs)
+        {
+            fa->Serialize(buffer + ptr);
+            ptr += FILE_ATTR_SIZE;
+        }
     }
 
     void S2FSBlock::DeserializeDirData(char *buffer)
     {
-
+        uint64_t ptr = 1;
+        while (*(uint64_t *)(buffer + ptr))
+        {
+            S2FSFileAttr *fa = new S2FSFileAttr;
+            fa->Deserialize(buffer + ptr);
+            _file_attrs.push_back(fa);
+        }
     }
 
 
@@ -232,6 +302,9 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSSegment::Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res)
     {
+        if (name.length() > MAX_NAME_LENGTH)
+            return NULL;
+
         WriteLock();
         uint64_t allocated = 0;
         S2FSBlock *inode;
@@ -256,7 +329,7 @@ namespace ROCKSDB_NAMESPACE
                 _blocks[addr_2_block(empty)] = inode;
                 _name_2_inode[name] = inode->ID();
                 _inode_map[inode->ID()] = empty;
-                
+
                 if (type == ITYPE_DIR_INODE)
                     inode->Name(name);
             }

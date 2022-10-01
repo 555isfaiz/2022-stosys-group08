@@ -17,14 +17,15 @@
 namespace ROCKSDB_NAMESPACE
 {
 
-    #define MAX_NAME_LENGTH 32
-    #define INODE_MAP_ENTRY_LENGTH 16
-    #define map_contains(map, key)  (map.find(key) != map.end())
-    #define addr_2_segment(addr)    (addr / S2FSSegment::Size())
-    #define segment_2_addr(segm)    (segm * S2FSSegment::Size())
-    #define addr_2_block(addr)    ((addr / S2FSBlock::Size()) % S2FSSegment::Size())
-    #define addr_2_inseg_offset(addr)    (addr % S2FSSegment::Size())
-    #define block_2_inseg_offset(bloc)    (bloc * S2FSBlock::Size())
+    #define MAX_NAME_LENGTH                     32
+    #define INODE_MAP_ENTRY_LENGTH              16
+    #define FILE_ATTR_SIZE                      64
+    #define map_contains(map, key)              (map.find(key) != map.end())
+    #define addr_2_segment(addr)                (addr / S2FSSegment::Size())
+    #define segment_2_addr(segm)                (segm * S2FSSegment::Size())
+    #define addr_2_block(addr)                  ((addr / S2FSBlock::Size()) % S2FSSegment::Size())
+    #define addr_2_inseg_offset(addr)           (addr % S2FSSegment::Size())
+    #define block_2_inseg_offset(bloc)          (bloc * S2FSBlock::Size())
 
     static std::atomic_int64_t id_alloc(0);
 
@@ -53,8 +54,8 @@ namespace ROCKSDB_NAMESPACE
         inline int Unlock() { return pthread_rwlock_unlock(&_rwlock); }
 
         // Need to free the return value
-        virtual void Serialize(char *buffer) = 0;     // for M5
-        virtual void Deserialize(char *buffer) = 0;     // for M5
+        virtual void Serialize(char *buffer) = 0;
+        virtual void Deserialize(char *buffer) = 0;
     };
 
     class S2FSFileAttr : public S2FSObject
@@ -66,19 +67,29 @@ namespace ROCKSDB_NAMESPACE
         bool _is_dir;
         // Global offset of the file inode
         uint64_t _offset;
-        uint32_t _inode_id;
+        uint64_t _inode_id;
         // ...
     public:
-        S2FSFileAttr(/* args */){}
+        S2FSFileAttr(){}
         ~S2FSFileAttr(){}
 
         // Need to free the return value
-        void Serialize(char *buffer){}     // for M5
-        void Deserialize(char *buffer){}     // for M5
+        void Serialize(char *buffer);
+        void Deserialize(char *buffer);
 
-        inline const std::string& Name() { return _name; }
-        inline uint64_t Offset() { return _offset; }
-        inline uint64_t InodeID() { return _inode_id; }
+        inline const std::string& Name()                        { return _name; }
+        inline uint64_t Size()                                  { return _size; }
+        inline uint64_t CreateTime()                            { return _create_time; }
+        inline bool IsDir()                                     { return _is_dir; }
+        inline uint64_t Offset()                                { return _offset; }
+        inline uint64_t InodeID()                               { return _inode_id; }
+
+        inline S2FSFileAttr* Name(const std::string& name)      { _name = name; return this; }
+        inline S2FSFileAttr* Size(uint64_t size)                { _size = size; return this; }
+        inline S2FSFileAttr* CreateTime(uint64_t create_time)   { _create_time = create_time; return this; }
+        inline S2FSFileAttr* IsDir(bool is_dir)                 { _is_dir = is_dir; return this; }
+        inline S2FSFileAttr* Offset(uint64_t offset)            { _offset = offset; return this; }
+        inline S2FSFileAttr* InodeID(uint64_t inode_id)         { _inode_id = inode_id; return this; }
     };
 
     class S2FSBlock : public S2FSObject
@@ -115,7 +126,7 @@ namespace ROCKSDB_NAMESPACE
         _next(0),
         _prev(0),
         _content(0) {}
-        
+
         // Should followed by Deserialize()
         S2FSBlock(){}
         ~S2FSBlock(){}
@@ -123,13 +134,19 @@ namespace ROCKSDB_NAMESPACE
         void Serialize(char *buffer);
         void Deserialize(char *buffer);
 
-        inline void AddOffset(uint64_t offset) { _offsets.push_back(offset); }
+        inline void AddOffset(uint64_t offset) 
+        { 
+            WriteLock();
+            _offsets.push_back(offset); 
+            Unlock();
+        }
+
         S2FSBlock *DirectoryLookUp(std::string &name);
-        inline INodeType Type() { return _type; }
-        inline uint64_t ID() { return _id; }
-        inline const std::string& Name() { return _name; }
-        inline S2FSBlock* Name(const std::string& name) { _name = name; return this; }
-        inline std::list<S2FSFileAttr*> &FileAttrs() { return _file_attrs; }
+        inline INodeType Type()                                 { return _type; }
+        inline uint64_t ID()                                    { return _id; }
+        inline const std::string& Name()                        { return _name; }
+        inline S2FSBlock* Name(const std::string& name)         { _name = name; return this; }
+        inline std::list<S2FSFileAttr*> &FileAttrs()            { return _file_attrs; }
 
         static uint64_t Size();
     };
@@ -150,8 +167,8 @@ namespace ROCKSDB_NAMESPACE
         ~S2FSSegment(){}
 
         // Need to free the return value
-        void Serialize(char *buffer);                  // for M5
-        void Deserialize(char *buffer);     // for M5
+        void Serialize(char *buffer);
+        void Deserialize(char *buffer);
 
         // return: in-segment offset
         uint64_t GetEmptyBlock();
