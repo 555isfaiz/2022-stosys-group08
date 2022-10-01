@@ -159,6 +159,8 @@ namespace ROCKSDB_NAMESPACE {
         std::list<S2FSSegment*> _cache;
         uint64_t _wp_end;
         pthread_mutex_t _mutex;
+
+        IOStatus _FileExists(const std::string &fname, S2FSBlock **res);
     };
 }
 

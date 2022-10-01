@@ -29,7 +29,7 @@ namespace ROCKSDB_NAMESPACE
             }
             else
             {
-                data = new S2FSBlock(ITYPE_DIR_DATA);
+                data = new S2FSBlock;
                 char *buf = (char *)calloc(S2FSBlock::Size(), sizeof(char));
                 int ret = zns_udevice_read(_fs->_zns_dev, off, buf, S2FSBlock::Size());
                 if (ret)
@@ -66,10 +66,102 @@ namespace ROCKSDB_NAMESPACE
         return NULL;
     }
 
+    void S2FSBlock::SerializeFileInode(char *buffer)
+    {
+
+    }
+
+    void S2FSBlock::DeserializeFileInode(char *buffer)
+    {
+
+    }
+
+    void S2FSBlock::SerializeDirInode(char *buffer)
+    {
+
+    }
+
+    void S2FSBlock::DeserializeDirInode(char *buffer)
+    {
+
+    }
+
+    void S2FSBlock::SerializeDirData(char *buffer)
+    {
+
+    }
+
+    void S2FSBlock::DeserializeDirData(char *buffer)
+    {
+
+    }
+
+
+    void S2FSBlock::Serialize(char *buffer)
+    {
+        switch (_type)
+        {
+        case ITYPE_DIR_INODE:
+            SerializeDirInode(buffer);
+            break;
+
+        case ITYPE_DIR_DATA:
+            SerializeDirData(buffer);
+            break;
+
+        case ITYPE_FILE_INODE:
+            SerializeDirData(buffer);
+            break;
+
+        case ITYPE_FILE_DATA:
+            *buffer = _type << 4;
+            memcpy(buffer + 1, _content, Size() - 1);
+            break;
+        
+        default:
+            std::cout << "Error: unknown block type: " << _type << " during S2FSBlock::Serialize."<< "\n";
+            break;
+        }
+    }
+
+    void S2FSBlock::Deserialize(char *buffer)
+    {
+        char type = *buffer >> 4;
+        switch (type)
+        {
+        case 1:
+            _type = ITYPE_FILE_INODE;
+            DeserializeFileInode(buffer);
+            break;
+        case 2:
+            _type = ITYPE_FILE_DATA;
+            _content = (char *)calloc(Size() - 1, sizeof(char));
+            memcpy(_content, buffer + 1, Size() - 1);
+            break;
+        case 4:
+            _type = ITYPE_DIR_INODE;
+            DeserializeDirInode(buffer);
+            break;
+        case 8:
+            _type = ITYPE_DIR_DATA;
+            DeserializeDirData(buffer);
+            break;
+        case 0:
+            _type = ITYPE_UNKNOWN;
+            break;
+
+        default:
+            std::cout << "Error: dirty data, unknown block type: " << type << " during S2FSBlock::Deserialize."<< "\n";
+            break;
+        }
+    }
+
     S2FSSegment::S2FSSegment(uint64_t addr)
     : _addr_start(addr)
     {
         _blocks.resize(_fs->_zns_dev_ex->blocks_per_zone);
+        // hope this would always be 1...
+        _reserve_for_inode = INODE_MAP_ENTRY_LENGTH * _fs->_zns_dev_ex->blocks_per_zone / 2 / S2FSBlock::Size() + 1;
     }
 
     uint64_t S2FSSegment::Size() { return _fs->_zns_dev->lba_size_bytes * _fs->_zns_dev_ex->blocks_per_zone; }
@@ -77,7 +169,7 @@ namespace ROCKSDB_NAMESPACE
     uint64_t S2FSSegment::GetEmptyBlock()
     {
         // skip the first one. that's for inode map
-        for (size_t i = 1; i < _blocks.size(); i++)
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
             if (_blocks.at(i) != NULL)
             {
@@ -91,7 +183,7 @@ namespace ROCKSDB_NAMESPACE
     {
         uint64_t num = 0;
         // skip the first one. that's for inode map
-        for (size_t i = 1; i < _blocks.size(); i++)
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
             if (_blocks.at(i) == NULL)
             {
@@ -164,6 +256,9 @@ namespace ROCKSDB_NAMESPACE
                 _blocks[addr_2_block(empty)] = inode;
                 _name_2_inode[name] = inode->ID();
                 _inode_map[inode->ID()] = empty;
+                
+                if (type == ITYPE_DIR_INODE)
+                    inode->Name(name);
             }
         }
         else
@@ -191,13 +286,59 @@ namespace ROCKSDB_NAMESPACE
         return allocated;
     }
 
-    char *S2FSSegment::Serialize()                  
+    void S2FSSegment::Serialize(char *buffer)
     {
+        ReadLock();
+        uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
+        for (auto iter = _inode_map.begin(); iter != _inode_map.end() && off < size; off += INODE_MAP_ENTRY_LENGTH, iter++)
+        {
+            *(uint64_t *)(buffer + off) = iter->first;
+            *(uint64_t *)(buffer + off + 8) = iter->second;
+        }
 
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        {
+            _blocks.at(i)->Serialize(buffer + i * S2FSBlock::Size());
+        }
+        Unlock();
     }
 
     void S2FSSegment::Deserialize(char *buffer)
     {
+        WriteLock();
+        for (uint32_t c = 0; c < _reserve_for_inode * S2FSBlock::Size(); c += INODE_MAP_ENTRY_LENGTH)
+        {
+            uint64_t id = *(uint64_t *)(buffer + c);
+            uint64_t offset = *(uint64_t *)(buffer + c + 8);
+            _inode_map[id] = offset;
+        }
 
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        {
+            S2FSBlock *block = new S2FSBlock;
+            block->Deserialize(buffer + i * S2FSBlock::Size());
+
+            if (block->Type() == 0)
+                delete block;
+            else
+            {
+                _blocks[i] = block;
+                if (block->Type() == ITYPE_DIR_DATA)
+                {
+                    for (auto fa : block->FileAttrs())
+                    {
+                        if (fa->Offset() < _addr_start + Size() && fa->Offset() > _addr_start)
+                        {
+                            _name_2_inode[fa->Name()] = fa->InodeID();
+                        }
+                    }
+                }
+                else if (block->Type() == ITYPE_DIR_INODE)
+                {
+                    _name_2_inode[block->Name()] = block->ID();
+                }
+            }
+        }
+        Unlock();
     }
 }

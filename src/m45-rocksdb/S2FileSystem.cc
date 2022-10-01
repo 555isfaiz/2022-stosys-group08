@@ -157,7 +157,7 @@ namespace ROCKSDB_NAMESPACE {
                 return seg;
             }
         }
-        
+
         Unlock();
         return NULL;
     }
@@ -208,6 +208,17 @@ namespace ROCKSDB_NAMESPACE {
             *res = parent;
             return false;
         }
+    }
+
+    IOStatus S2FileSystem::_FileExists(const std::string &fname, S2FSBlock **res) 
+    {
+        std::string name = fname;
+        S2FSBlock *inode;
+        auto exist = DirectoryLookUp(name, NULL, res);
+        if (exist)
+            return IOStatus::OK();
+        else
+            return IOStatus::NotFound();
     }
 
     // Create a brand new sequentially-readable file with the specified name.
@@ -296,10 +307,8 @@ namespace ROCKSDB_NAMESPACE {
     // Creates directory if missing. Return Ok if it exists, or successful in
     // Creating.
     IOStatus S2FileSystem::CreateDirIfMissing(const std::string &dirname, const IOOptions &options, IODebugContext *dbg) {
-        std::string name = dirname;
         S2FSBlock *inode;
-        auto exist = DirectoryLookUp(name, NULL, &inode);
-        if (exist)
+        if (_FileExists(dirname, &inode) == IOStatus::OK())
             return IOStatus::OK();
 
         auto segment = FindNonFullSegment();
@@ -405,7 +414,8 @@ namespace ROCKSDB_NAMESPACE {
     //                  whether this file exists, or if the path is invalid.
     //         IOError if an IO Error was encountered
     IOStatus S2FileSystem::FileExists(const std::string &fname, const IOOptions &options, IODebugContext *dbg) {
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSBlock *inode;
+        return _FileExists(fname, &inode);
     }
 
     IOStatus
