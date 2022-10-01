@@ -80,16 +80,19 @@ namespace ROCKSDB_NAMESPACE
     class S2FSBlock : public S2FSObject
     {
     private:
-        // Only valid for INode types. Indicating next INode global offset
+        // Only valid for ITYPE_INODE types. Indicating next INode global offset
         uint64_t _next;
-        // Only valid for INode types. Indicating previous INode global offset
+        // Only valid for ITYPE_INODE types. Indicating previous INode global offset
         uint64_t _prev;
         std::string _name;
         uint32_t _id;
         INodeType _type;
+        // Only valid for ITYPE_INODE types.
         // Global offsets of data blocks
         std::list<uint64_t> _offsets;
+        // Only valid for ITYPE_DIR_DATA types.
         std::list<S2FSFileAttr*> _file_attrs;
+        // Only valid for ITYPE_FILE_DATA types.
         char *_content;
     public:
         S2FSBlock(INodeType type) : _id(id_alloc++), _type(type) {}
@@ -103,6 +106,7 @@ namespace ROCKSDB_NAMESPACE
         inline void AddOffset(uint64_t offset) { _offsets.push_back(offset); }
         S2FSBlock *DirectoryLookUp(std::string &name);
         inline uint32_t ID() { return _id; }
+        inline std::list<S2FSFileAttr*> &FileAttrs() { return _file_attrs; }
 
         static uint64_t Size();
     };
@@ -128,7 +132,10 @@ namespace ROCKSDB_NAMESPACE
         // return: in-segment offset
         uint64_t GetEmptyBlock();
         uint64_t GetEmptyBlockNum();
+        
         // Get block by in-segment offset
+        // No lock ops in this function, not thread safe
+        // Make sure to use WriteLock() before calling this
         S2FSBlock *GetBlockByOffset(uint64_t offset);
         S2FSBlock *LookUp(const std::string &name);
         uint64_t Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res);

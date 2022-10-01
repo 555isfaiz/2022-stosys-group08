@@ -15,12 +15,16 @@ namespace ROCKSDB_NAMESPACE
             return NULL;
         }
 
+        ReadLock();
         for (auto off : _offsets)
         {
             S2FSBlock *data;
+            bool need_lock = false;
             auto s = _fs->ReadSegmentFromCache(addr_2_segment(off));
             if (s)
             {
+                s->WriteLock();
+                need_lock = true;
                 data = s->GetBlockByOffset(off);
             }
             else
@@ -37,15 +41,28 @@ namespace ROCKSDB_NAMESPACE
                 free(buf);
             }
 
-            for (auto attr : _file_attrs)
+            if (need_lock)
+            {
+                data->ReadLock();
+            }
+
+            for (auto attr : data->FileAttrs())
             {
                 if (attr->Name() == name)
                 {
                     auto s = _fs->ReadSegment(addr_2_segment(attr->Offset()));
-                    return s->GetBlockByOffset(addr_2_inseg_offset(attr->Offset()));
+                    return s->LookUp(attr->Name());
                 }
             }
+
+            if (need_lock)
+            {
+                s->Unlock();
+                data->Unlock();
+            }
+            delete data;
         }
+        Unlock();
         return NULL;
     }
 
@@ -87,7 +104,6 @@ namespace ROCKSDB_NAMESPACE
     S2FSBlock *S2FSSegment::GetBlockByOffset(uint64_t offset)
     {
         S2FSBlock *block = NULL;
-        ReadLock();
         block = _blocks.at(addr_2_block(offset));
         // block is occupied, but not present in memory
         if ((uint64_t)block == 1)
@@ -107,17 +123,18 @@ namespace ROCKSDB_NAMESPACE
             }
             free(buf);
         }
-        Unlock();
         return block;
     }
 
     S2FSBlock *S2FSSegment::LookUp(const std::string &name)
     {
+        WriteLock();
         if (map_contains(_name_2_inode, name))
         {
             auto addr = _inode_map.at(_name_2_inode.at(name));
             return GetBlockByOffset(addr);
         }
+        Unlock();
         return NULL;
     }
 

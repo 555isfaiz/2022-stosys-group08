@@ -63,23 +63,26 @@ namespace ROCKSDB_NAMESPACE {
 
     S2FSSegment *S2FileSystem::ReadSegmentFromCache(uint64_t from)
     {
+        Lock();
         for (auto s : _cache)
         {
             if (s->Addr() == from)
             {
+                Unlock();
                 return s;
             }
         }
+        Unlock();
         return NULL;
     }
 
-    S2FSSegment *S2FileSystem::ReadSegmentFromMem()
+    S2FSSegment *S2FileSystem::ReadSegmentFromDisk()
     {
-        return ReadSegment(wp_end);
+        return ReadSegmentFromDisk(_wp_end);
     }
 
 
-    S2FSSegment *S2FileSystem::ReadSegmentFromMem(uint64_t from)
+    S2FSSegment *S2FileSystem::ReadSegmentFromDisk(uint64_t from)
     {
         uint64_t segm_start = segment_2_addr(addr_2_segment(from));
         S2FSSegment *s = new S2FSSegment(segm_start);
@@ -101,14 +104,18 @@ namespace ROCKSDB_NAMESPACE {
             s->Allocate("/", ITYPE_DIR_INODE, S2FSBlock::Size(), &b);
         }
 
+        Lock();
         if (_cache.size() >= CACHE_SEG_THRESHOLD)
         {
             auto ptr = _cache.front();
+            ptr->WriteLock();
             _cache.pop_front();
+            ptr->Unlock();
             delete ptr;
         }
-
         _cache.push_back(s);
+        Unlock();
+
         return s;
     }
 
@@ -118,17 +125,21 @@ namespace ROCKSDB_NAMESPACE {
         if (s)
             return s;
 
-        return ReadSegmentFromMem(from);
+        return ReadSegmentFromDisk(from);
     }
 
     S2FSSegment *S2FileSystem::FindNonFullSegment()
     {
+        Lock();
         for (auto s : _cache)
         {
+            s->ReadLock();
             if (s->GetEmptyBlockNum() >= 2)
             {
+                s->Unlock();
                 return s;
             }
+            s->Unlock();
         }
 
         for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
@@ -140,12 +151,14 @@ namespace ROCKSDB_NAMESPACE {
                     continue;
             }
 
-            auto seg = ReadSegment(i);
+            auto seg = ReadSegmentFromDisk(i);
             if (seg->GetEmptyBlockNum() >= 2)
             {
                 return seg;
             }
         }
+        
+        Unlock();
         return NULL;
     }
 
