@@ -166,7 +166,6 @@ namespace ROCKSDB_NAMESPACE
         }
     }
 
-
     void S2FSBlock::Serialize(char *buffer)
     {
         switch (_type)
@@ -270,6 +269,7 @@ namespace ROCKSDB_NAMESPACE
         // block is occupied, but not present in memory
         if ((uint64_t)block == 1)
         {
+            // For now, this part seems will never be triggered
             char *buf = (char *)calloc(S2FSBlock::Size(), sizeof(char));
             int ret = zns_udevice_read(_fs->_zns_dev, offset + _addr_start, buf, S2FSBlock::Size());
             if (ret)
@@ -303,7 +303,7 @@ namespace ROCKSDB_NAMESPACE
     uint64_t S2FSSegment::Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res)
     {
         if (name.length() > MAX_NAME_LENGTH)
-            return NULL;
+            return 0;
 
         WriteLock();
         uint64_t allocated = 0;
@@ -314,7 +314,7 @@ namespace ROCKSDB_NAMESPACE
             {
                 std::cout << "Error: allocating data block for not existing file: " << name << " during S2FSSegment::Allocate." << "\n";
                 Unlock();
-                return NULL;
+                return 0;
             }
 
             S2FSBlock *inode = _blocks.at(_inode_map.at(_name_2_inode.at(name)) / S2FSBlock::Size());
@@ -324,7 +324,7 @@ namespace ROCKSDB_NAMESPACE
             // need at least 2 blocks. one for inode, one for data.
             if (GetEmptyBlockNum() >= 2)
             {
-                inode = new S2FSBlock(type);
+                inode = new S2FSBlock(type, _addr_start);
                 uint64_t empty = GetEmptyBlock();
                 _blocks[addr_2_block(empty)] = inode;
                 _name_2_inode[name] = inode->ID();
@@ -359,6 +359,18 @@ namespace ROCKSDB_NAMESPACE
         return allocated;
     }
 
+    void S2FSSegment::Preload(char *buffer)
+    {
+        for (uint32_t c = 0; c < _reserve_for_inode * S2FSBlock::Size(); c += INODE_MAP_ENTRY_LENGTH)
+        {
+            uint64_t id = *(uint64_t *)(buffer + c);
+            uint64_t offset = *(uint64_t *)(buffer + c + 8);
+            if (!id && !offset)
+                break;
+            _inode_map[id] = offset;
+        }
+    }
+
     void S2FSSegment::Serialize(char *buffer)
     {
         ReadLock();
@@ -379,12 +391,8 @@ namespace ROCKSDB_NAMESPACE
     void S2FSSegment::Deserialize(char *buffer)
     {
         WriteLock();
-        for (uint32_t c = 0; c < _reserve_for_inode * S2FSBlock::Size(); c += INODE_MAP_ENTRY_LENGTH)
-        {
-            uint64_t id = *(uint64_t *)(buffer + c);
-            uint64_t offset = *(uint64_t *)(buffer + c + 8);
-            _inode_map[id] = offset;
-        }
+
+        Preload(buffer);
 
         for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
@@ -395,6 +403,7 @@ namespace ROCKSDB_NAMESPACE
                 delete block;
             else
             {
+                block->SegmentAddr(_addr_start);
                 _blocks[i] = block;
                 if (block->Type() == ITYPE_DIR_DATA)
                 {

@@ -73,7 +73,6 @@ namespace ROCKSDB_NAMESPACE
         S2FSFileAttr(){}
         ~S2FSFileAttr(){}
 
-        // Need to free the return value
         void Serialize(char *buffer);
         void Deserialize(char *buffer);
 
@@ -111,6 +110,9 @@ namespace ROCKSDB_NAMESPACE
         std::list<S2FSFileAttr*> _file_attrs;
         // Only valid for ITYPE_FILE_DATA type.
         char *_content;
+        // Only valid for ITYPE_FILE_DATA type.
+        uint64_t _content_size;
+        uint64_t _segment_addr;
 
         void SerializeFileInode(char *buffer);
         void DeserializeFileInode(char *buffer);
@@ -120,12 +122,14 @@ namespace ROCKSDB_NAMESPACE
         void DeserializeDirData(char *buffer);
 
     public:
-        S2FSBlock(INodeType type) 
+        S2FSBlock(INodeType type, uint64_t segmeng_addr) 
         : _id(id_alloc++), 
         _type(type),
         _next(0),
         _prev(0),
-        _content(0) {}
+        _content(0),
+        _content_size(0),
+        _segment_addr(segmeng_addr) {}
 
         // Should followed by Deserialize()
         S2FSBlock(){}
@@ -147,6 +151,8 @@ namespace ROCKSDB_NAMESPACE
         inline const std::string& Name()                        { return _name; }
         inline S2FSBlock* Name(const std::string& name)         { _name = name; return this; }
         inline std::list<S2FSFileAttr*> &FileAttrs()            { return _file_attrs; }
+        inline void SegmentAddr(uint64_t addr)                  { _segment_addr = addr; }
+        inline uint64_t SegmentAddr()                           { return _segment_addr; }
 
         static uint64_t Size();
     };
@@ -166,7 +172,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSSegment(uint64_t addr);
         ~S2FSSegment(){}
 
-        // Need to free the return value
+        void Preload(char *buffer);
         void Serialize(char *buffer);
         void Deserialize(char *buffer);
 
@@ -180,10 +186,11 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock *GetBlockByOffset(uint64_t offset);
         S2FSBlock *LookUp(const std::string &name);
         uint64_t Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res);
-        int Free();
+        int Free(uint64_t inode_id) {}
         int Read();
         int Write();
         int Flush();
+        int Offload();
         int OnGC();
         inline uint64_t Addr() { return _addr_start; }
 

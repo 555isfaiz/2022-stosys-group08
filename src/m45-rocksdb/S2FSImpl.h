@@ -5,11 +5,14 @@
 #include "rocksdb/io_status.h"
 #include "rocksdb/file_system.h"
 #include "rocksdb/status.h"
+#include "S2FSCommon.h"
 
 #include <zns_device.h>
 
 namespace ROCKSDB_NAMESPACE
 {
+    class S2FSBlock;
+
     class S2FSDirectory : public FSDirectory
     {
     private:
@@ -22,15 +25,17 @@ namespace ROCKSDB_NAMESPACE
     class S2FSWritableFile : public FSWritableFile
     {
     private:
-        /* data */
+        S2FSBlock *_inode;
     public:
-        S2FSWritableFile(/* args */);
-        ~S2FSWritableFile();
+        S2FSWritableFile(S2FSBlock *inode) 
+        : _inode(inode)
+        {}
+        ~S2FSWritableFile() {}
         // Append data to the end of the file
         // Note: A WriteableFile object must support either Append or
         // PositionedAppend, so the users cannot mix the two.
         virtual IOStatus Append(const Slice &data, const IOOptions &options,
-                                IODebugContext *dbg) = 0;
+                                IODebugContext *dbg);
 
         // Append data with verification information.
         // Note that this API change is experimental and it might be changed in
@@ -47,10 +52,10 @@ namespace ROCKSDB_NAMESPACE
             return Append(data, options, dbg);
         }
 
-        virtual IOStatus Close(const IOOptions &options, IODebugContext *dbg) = 0;
-        virtual IOStatus Flush(const IOOptions &options, IODebugContext *dbg) = 0;
+        virtual IOStatus Close(const IOOptions &options, IODebugContext *dbg) {}
+        virtual IOStatus Flush(const IOOptions &options, IODebugContext *dbg) {}
         virtual IOStatus Sync(const IOOptions &options,
-                              IODebugContext *dbg) = 0; // sync data
+                              IODebugContext *dbg){} // sync data
 
     };
 }
