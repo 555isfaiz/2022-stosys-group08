@@ -129,7 +129,7 @@ if(STOSYS_M45)
     #pkg_search_module(BZip2 REQUIRED IMPORTED_TARGET bzip2)
     find_package(BZip2)
 
-    add_executable(m45 src/m45-rocksdb/m45_main.cc src/m45-rocksdb/rocks_s2fs.cc src/m45-rocksdb/S2FileSystem.cc src/m45-rocksdb/S2FileSystem.h src/m45-rocksdb/S2FSImpl.cc src/m45-rocksdb/S2FSImpl.h src/m45-rocksdb/S2FSCommon.cc src/m45-rocksdb/S2FSCommon.h src/m45-rocksdb/DummyFSForward.cc src/m45-rocksdb/DummyFSForward.h)
+    add_executable(m45 src/m45-rocksdb/m45_main.cc src/m45-rocksdb/rocks_s2fs.cc src/m45-rocksdb/S2FileSystem.cc src/m45-rocksdb/S2FileSystem.h src/m45-rocksdb/S2FSImpl.cc src/m45-rocksdb/S2FSImpl.h src/m45-rocksdb/S2FSCommon.cc src/m45-rocksdb/S2FSBlock.cc src/m45-rocksdb/S2FSSegment.cc src/m45-rocksdb/S2FSCommon.h src/m45-rocksdb/DummyFSForward.cc src/m45-rocksdb/DummyFSForward.h)
     # see all the defined variables here: https://cmake.org/cmake/help/latest/module/FindPkgConfig.html
     add_definitions (${NVME_CFLAGS} ${ROCKSDB_CFLAGS}  ${ROCKSDB_STATIC_CFLAGS} ${ROCKSDB_CFLAGS_OTHER})
     target_link_libraries(m45 pthread stosys ${ROCKSDB_STATIC_LIBRARIES} ${SNAPPY_LIBRARIES} ${ZSTD_LIBRARIES} ${LZ4_LIBRARIES} ${BZIP2_LIBRARIES})
