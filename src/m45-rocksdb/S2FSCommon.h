@@ -201,7 +201,7 @@ namespace ROCKSDB_NAMESPACE
         ~S2FSSegment(){}
 
         void Preload(char *buffer);
-        void Serialize(char *buffer);
+        void Serialize(char *buffer);   // TODO: should return int for serialized length
         void Deserialize(char *buffer);
 
         // return: in-segment offset

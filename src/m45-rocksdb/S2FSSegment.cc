@@ -154,7 +154,8 @@ namespace ROCKSDB_NAMESPACE
         Unlock();
 
         // Do this after releasing the lock, otherwise deadlock happens
-        parent_dir->DirectoryAppend(fa);
+        if (parent_dir)
+            parent_dir->DirectoryAppend(fa);
         return allocated;
     }
 
