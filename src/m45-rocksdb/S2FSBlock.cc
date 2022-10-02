@@ -230,6 +230,65 @@ namespace ROCKSDB_NAMESPACE
         return off;
     }
 
+    int S2FSBlock::DirectoryAppend(S2FSFileAttr& fa)
+    {
+        WriteLock();
+        auto inode = this;
+        S2FSSegment *segment;
+        std::list<S2FSBlock *> inodes;
+        inodes.push_back(inode);
+        while (inode->Next())
+        {
+            segment = _fs->ReadSegment(inode->SegmentAddr());
+            segment->WriteLock();
+            inode = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Next()));
+            inode->WriteLock();
+            segment->Unlock();
+            inodes.push_back(inode);
+        }
+
+        auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
+        if ((data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
+        {
+            uint64_t allocated = 0, to_allocate = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
+            do
+            {
+                uint64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate - allocated, &data_block);
+                allocated += tmp;
+                // this segment is full, allocate new in next segment
+                if (tmp == 0)
+                {
+                    segment = _fs->FindNonFullSegment();
+                    if (!segment)
+                    {
+                        return -1;
+                    }
+
+                    S2FSBlock *res;
+                    tmp = segment->AllocateNew("", ITYPE_FILE_DATA, NULL, to_allocate - allocated, &res, NULL);
+                    inode->Next(res->GlobalOffset());
+                    res->Prev(inode->GlobalOffset());
+                    res->WriteLock();
+                    inodes.push_back(res);
+                    inode = res;
+                    allocated += tmp;
+                }
+
+            } while (allocated < to_allocate);
+        }
+        else
+        {
+            data_block->AddFileAttr(fa);
+        }
+
+        while (!inodes.empty())
+        {
+            inodes.back()->Unlock();
+            inodes.pop_back();
+        }
+        return 0;
+    }
+
     int S2FSBlock::DataAppend(const char *data, uint64_t len)
     {
         WriteLock();
@@ -251,15 +310,19 @@ namespace ROCKSDB_NAMESPACE
         if (data_block->ContentSize() + len > S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
         {
             uint64_t allocated = 0;
-            INodeType type = (inode->Type() == ITYPE_DIR_INODE ? ITYPE_DIR_DATA : ITYPE_FILE_DATA);
             do
             {
-                uint64_t tmp = segment->AllocateData(inode->ID(), type, data + allocated, len - allocated, &data_block);
+                uint64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + allocated, len - allocated, &data_block);
                 allocated += tmp;
+                // this segment is full, allocate new in next segment
                 if (tmp == 0)
                 {
-                    // this segment is full, allocate new in next segment
                     segment = _fs->FindNonFullSegment();
+                    if (!segment)
+                    {
+                        return -1;
+                    }
+
                     S2FSBlock *res;
                     tmp = segment->AllocateNew("", ITYPE_FILE_DATA, data + allocated, len - allocated, &res, NULL);
                     inode->Next(res->GlobalOffset());

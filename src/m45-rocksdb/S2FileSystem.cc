@@ -159,6 +159,7 @@ start:
             seg->Unlock();
         }
 
+        std::cout << "Disk full" << "\n";
         return NULL;
     }
 

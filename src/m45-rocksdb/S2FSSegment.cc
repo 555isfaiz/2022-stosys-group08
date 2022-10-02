@@ -93,30 +93,40 @@ namespace ROCKSDB_NAMESPACE
         if (name.length() > MAX_NAME_LENGTH)
             return 0;
 
+        if (type != ITYPE_DIR_INODE && type != ITYPE_FILE_INODE)
+        {
+            std::cout << "Error: allocating new for unknown block type: " << type << " during S2FSSegment::Allocate." << "\n";
+            return 0;
+        }
+
         WriteLock();
         uint64_t allocated = 0;
         S2FSBlock *inode;
         INodeType data_type;
-        if (type == ITYPE_DIR_INODE || type == ITYPE_FILE_INODE)
+        S2FSFileAttr fa;
+        // need at least 2 blocks. one for inode, one for data.
+        if (GetEmptyBlockNum() >= 2)
         {
-            // need at least 2 blocks. one for inode, one for data.
-            if (GetEmptyBlockNum() >= 2)
-            {
-                inode = new S2FSBlock(type, _addr_start);
-                uint64_t empty = GetEmptyBlock();
-                _blocks[addr_2_block(empty)] = inode;
-                _name_2_inode[name] = inode->ID();
-                _inode_map[inode->ID()] = empty;
+            inode = new S2FSBlock(type, _addr_start);
+            uint64_t empty = GetEmptyBlock();
+            _blocks[addr_2_block(empty)] = inode;
+            _name_2_inode[name] = inode->ID();
+            _inode_map[inode->ID()] = empty;
 
-                if (type == ITYPE_DIR_INODE)
-                    inode->Name(name);
-                
-                data_type = (type == ITYPE_DIR_INODE ? ITYPE_DIR_DATA : ITYPE_FILE_DATA);
+            if (type == ITYPE_DIR_INODE)
+                inode->Name(name);
+
+            data_type = (type == ITYPE_DIR_INODE ? ITYPE_DIR_DATA : ITYPE_FILE_DATA);
+
+            if (parent_dir)
+            {
+                fa.Name(name)
+                ->CreateTime(0)
+                ->IsDir(type == ITYPE_DIR_INODE)
+                ->InodeID(inode->ID())
+                ->Offset(inode->GlobalOffset())
+                ->Size(0);
             }
-        }
-        else
-        {
-            std::cout << "Error: allocating new for unknown block type: " << type << " during S2FSSegment::Allocate." << "\n";
         }
 
         if (inode)
@@ -142,6 +152,9 @@ namespace ROCKSDB_NAMESPACE
         // Flush();
 
         Unlock();
+
+        // Do this after releasing the lock, otherwise deadlock happens
+        parent_dir->DirectoryAppend(fa);
         return allocated;
     }
 

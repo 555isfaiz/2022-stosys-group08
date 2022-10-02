@@ -158,6 +158,17 @@ namespace ROCKSDB_NAMESPACE
         inline S2FSBlock* Name(const std::string& name)         { _name = name; return this; }
         inline const std::list<uint64_t>& Offsets()             { return _offsets; }
         inline const std::list<S2FSFileAttr*>& FileAttrs()      { return _file_attrs; }
+        inline void AddFileAttr(S2FSFileAttr &fa)               
+        {
+            S2FSFileAttr *_fa = new S2FSFileAttr;
+            _fa->Name(fa.Name())
+            ->CreateTime(fa.CreateTime())
+            ->IsDir(fa.IsDir())
+            ->InodeID(fa.InodeID())
+            ->Offset(fa.Offset())
+            ->Size(fa.Size());
+            _file_attrs.push_back(_fa);
+        }
         inline char* Content()                                  { return _content; }
         inline uint64_t ContentSize()                           { return _content_size; }
         inline void SegmentAddr(uint64_t addr)                  { _segment_addr = addr; }
@@ -168,6 +179,7 @@ namespace ROCKSDB_NAMESPACE
         int ChainUnlock();
         uint64_t GlobalOffset();
         int DataAppend(const char *data, uint64_t len);
+        int DirectoryAppend(S2FSFileAttr& fa);
 
         static uint64_t Size();
         static uint64_t MaxDataSize(INodeType type);
