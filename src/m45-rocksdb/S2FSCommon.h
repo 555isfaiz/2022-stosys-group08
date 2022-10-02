@@ -21,12 +21,14 @@ namespace ROCKSDB_NAMESPACE
     #define INODE_MAP_ENTRY_LENGTH              16
     #define FILE_ATTR_SIZE                      64
     #define map_contains(map, key)              (map.find(key) != map.end())
-    #define addr_2_segment(addr)                (addr / S2FSSegment::Size())
-    #define segment_2_addr(segm)                (segm * S2FSSegment::Size())
-    #define addr_2_block(addr)                  ((addr / S2FSBlock::Size()) % S2FSSegment::Size())
-    #define addr_2_inseg_offset(addr)           (addr % S2FSSegment::Size())
-    #define block_2_inseg_offset(bloc)          (bloc * S2FSBlock::Size())
+    #define addr_2_segment(addr)                ((addr) / S2FSSegment::Size())
+    #define segment_2_addr(segm)                ((segm) * S2FSSegment::Size())
+    #define addr_2_block(addr)                  (((addr) / S2FSBlock::Size()) % S2FSSegment::Size())
+    #define addr_2_inseg_offset(addr)           ((addr) % S2FSSegment::Size())
+    #define block_2_inseg_offset(block)         ((block) * S2FSBlock::Size())
+    #define round_up(val, up_to)                (((val) / (up_to) + (((val) % (up_to)) == 0 ? 0 : 1)) * (up_to))
 
+    // Need to be written back to disk
     static std::atomic_int64_t id_alloc(0);
 
     enum INodeType
@@ -146,15 +148,29 @@ namespace ROCKSDB_NAMESPACE
         }
 
         S2FSBlock *DirectoryLookUp(std::string &name);
+        inline uint64_t Next()                                  { return _next; }
+        inline void Next(uint64_t next)                         { _next = next; }
+        inline uint64_t Prev()                                  { return _prev; }
+        inline void Prev(uint64_t prev)                         { _prev = prev; }
         inline INodeType Type()                                 { return _type; }
         inline uint64_t ID()                                    { return _id; }
         inline const std::string& Name()                        { return _name; }
         inline S2FSBlock* Name(const std::string& name)         { _name = name; return this; }
-        inline std::list<S2FSFileAttr*> &FileAttrs()            { return _file_attrs; }
+        inline const std::list<uint64_t>& Offsets()             { return _offsets; }
+        inline const std::list<S2FSFileAttr*>& FileAttrs()      { return _file_attrs; }
+        inline char* Content()                                  { return _content; }
+        inline uint64_t ContentSize()                           { return _content_size; }
         inline void SegmentAddr(uint64_t addr)                  { _segment_addr = addr; }
         inline uint64_t SegmentAddr()                           { return _segment_addr; }
 
+        int ChainReadLock();
+        int ChainWriteLock();
+        int ChainUnlock();
+        uint64_t GlobalOffset();
+        int DataAppend(const char *data, uint64_t len);
+
         static uint64_t Size();
+        static uint64_t MaxDataSize(INodeType type);
     };
 
     class S2FSSegment : public S2FSObject
@@ -185,14 +201,18 @@ namespace ROCKSDB_NAMESPACE
         // Make sure to use WriteLock() before calling this
         S2FSBlock *GetBlockByOffset(uint64_t offset);
         S2FSBlock *LookUp(const std::string &name);
-        uint64_t Allocate(const std::string &name, INodeType type, uint64_t size, S2FSBlock **res);
+        uint64_t AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir);
+        uint64_t AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res);
         int Free(uint64_t inode_id) {}
         int Read();
         int Write();
         int Flush();
         int Offload();
         int OnGC();
+
         inline uint64_t Addr() { return _addr_start; }
+        inline bool IsEmpty() { return _inode_map.empty(); }
+        inline uint64_t GetGlobalOffsetByINodeID(uint64_t id) { return _addr_start + _inode_map.at(id); }
 
         static uint64_t Size();
     };

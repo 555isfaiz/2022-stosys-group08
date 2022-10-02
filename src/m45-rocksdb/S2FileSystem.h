@@ -141,25 +141,20 @@ namespace ROCKSDB_NAMESPACE {
         struct user_zns_device *_zns_dev;
         struct zns_device_extra_info * _zns_dev_ex;
 
-        inline int Lock() { return pthread_mutex_lock(&_mutex); }
-        inline int Unlock() { return pthread_mutex_unlock(&_mutex); }
-
-        S2FSSegment *ReadSegmentFromCache(uint64_t from);
         S2FSSegment *ReadSegment(uint64_t from);
         S2FSSegment *FindNonFullSegment();
         bool DirectoryLookUp(std::string &name, S2FSBlock *parent, S2FSBlock **res);
+        // Read a segment regardless of whether it is in cache or not
+        S2FSSegment *LoadSegmentFromDisk();
+        // Read a segment regardless of whether it is in cache or not
+        S2FSSegment *LoadSegmentFromDisk(uint64_t from);
 
     private:
         std::string _uri;
         const std::string _fs_delimiter = "/";
         std::unordered_map<uint64_t, S2FSSegment*> _cache;
         uint64_t _wp_end;
-        pthread_mutex_t _mutex;
 
-        // Read a segment regardless of whether it is in cache or not
-        S2FSSegment *ReadSegmentFromDisk();
-        // Read a segment regardless of whether it is in cache or not
-        S2FSSegment *ReadSegmentFromDisk(uint64_t from);
         IOStatus _FileExists(const std::string &fname, S2FSBlock **res);
     };
 }

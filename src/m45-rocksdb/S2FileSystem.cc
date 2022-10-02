@@ -76,6 +76,17 @@ namespace ROCKSDB_NAMESPACE
 
             s->Preload(buf);
             _cache[segm_start] = s;
+
+            // First segment is empty. So we have a brand new flash here.
+            // set up root directory
+            if (!segm_start && s->GetEmptyBlockNum() == _zns_dev_ex->blocks_per_zone - 1)
+            {
+                S2FSBlock *b;
+                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, S2FSBlock::Size(), &b, NULL);
+            }
+
+            if (s->IsEmpty())
+                _wp_end = segm_start;
         }
     }
 
@@ -83,29 +94,25 @@ namespace ROCKSDB_NAMESPACE
     {
     }
 
-    S2FSSegment *S2FileSystem::ReadSegmentFromCache(uint64_t from)
+    S2FSSegment *S2FileSystem::ReadSegment(uint64_t from)
     {
-        Lock();
         for (auto s : _cache)
         {
             if (s.first == from)
             {
-                Unlock();
                 return s.second;
             }
         }
-        Unlock();
         return NULL;
     }
 
-    S2FSSegment *S2FileSystem::ReadSegmentFromDisk()
+    S2FSSegment *S2FileSystem::LoadSegmentFromDisk()
     {
-        return ReadSegmentFromDisk(_wp_end);
+        return LoadSegmentFromDisk(_wp_end);
     }
 
-    S2FSSegment *S2FileSystem::ReadSegmentFromDisk(uint64_t from)
+    S2FSSegment *S2FileSystem::LoadSegmentFromDisk(uint64_t from)
     {
-        Lock();
         uint64_t segm_start = segment_2_addr(addr_2_segment(from));
         S2FSSegment *s = _cache[segm_start];
         char buf[S2FSSegment::Size()] = {0};
@@ -118,43 +125,31 @@ namespace ROCKSDB_NAMESPACE
         }
 
         s->Deserialize(buf);
-        // First segment is empty. So we have a brand new flash here.
-        // set up root directory
-        if (!segm_start && s->GetEmptyBlockNum() == _zns_dev_ex->blocks_per_zone - 1)
-        {
-            S2FSBlock *b;
-            s->Allocate("/", ITYPE_DIR_INODE, S2FSBlock::Size(), &b);
-        }
 
-        // if (_cache.size() >= CACHE_SEG_THRESHOLD)
-        // {
-        //     auto ptr = _cache.front();
-        //     ptr->WriteLock();
-        //     _cache.pop_front();
-        //     ptr->Unlock();
-        //     delete ptr;
-        // }
-        // _cache.push_back(s);
-
-        Unlock();
         return s;
-    }
-
-    S2FSSegment *S2FileSystem::ReadSegment(uint64_t from)
-    {
-        auto s = ReadSegmentFromCache(from);
-        if (s)
-            return s;
-
-        return ReadSegmentFromDisk(from);
     }
 
     S2FSSegment *S2FileSystem::FindNonFullSegment()
     {
-        Lock();
+start:
+        S2FSSegment *seg = ReadSegment(_wp_end);
+        seg->ReadLock();
+        if (seg->GetEmptyBlockNum() >= 2)
+        {
+            seg->Unlock();
+            return seg;
+        }
+        seg->Unlock();
+
+        if (_wp_end < _zns_dev->capacity_bytes - S2FSSegment::Size())
+        {
+            _wp_end += S2FSSegment::Size();
+            goto start;
+        }
+
         for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
         {
-            auto seg = ReadSegment(i);
+            seg = ReadSegment(i);
             seg->ReadLock();
             if (seg->GetEmptyBlockNum() >= 2)
             {
@@ -164,7 +159,6 @@ namespace ROCKSDB_NAMESPACE
             seg->Unlock();
         }
 
-        Unlock();
         return NULL;
     }
 
@@ -293,19 +287,21 @@ namespace ROCKSDB_NAMESPACE
         {
             s = ReadSegment(inode->SegmentAddr());
             s->Free(inode->ID());
+            _FileExists(fname, &inode);     // set inode to the parent dir
         }
 
         bool allocated = false;
+        S2FSBlock *new_inode;
         while (s = FindNonFullSegment())
         {
-            if (s->Allocate(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, S2FSBlock::Size(), &inode))
+            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode))
             {
                 allocated = true;
                 break;
             }
         }
 
-        result->reset(new S2FSWritableFile(inode));
+        result->reset(new S2FSWritableFile(new_inode));
 
         return IOStatus::OK();
     }
