@@ -79,13 +79,13 @@ namespace ROCKSDB_NAMESPACE
 
             // First segment is empty. So we have a brand new flash here.
             // set up root directory
-            if (!segm_start && s->GetEmptyBlockNum() == _zns_dev_ex->blocks_per_zone - 1)
+            if (!segm_start && s->IsEmpty())
             {
                 S2FSBlock *b;
-                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, S2FSBlock::Size(), &b, NULL);
+                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_DIR_INODE), &b, NULL);
             }
 
-            if (s->IsEmpty())
+            if (!s->IsEmpty())
                 _wp_end = segm_start;
         }
     }
@@ -171,7 +171,9 @@ start:
         if (del_pos == 0)
         {
             S2FSSegment *segment = ReadSegment(0);
+            segment->WriteLock();
             block = segment->LookUp("/");
+            segment->Unlock();
             next = name.substr(del_pos + 1, name.length() - del_pos - 1);
         }
         else if (name.length() != 0)
@@ -302,9 +304,15 @@ start:
             }
         }
 
-        result->reset(new S2FSWritableFile(new_inode));
-
-        return IOStatus::OK();
+        if (allocated)
+        {
+            result->reset(new S2FSWritableFile(new_inode));
+            return IOStatus::OK();
+        }
+        else
+        {
+            return IOStatus::IOError();
+        }
     }
 
     IOStatus S2FileSystem::ReopenWritableFile(const std::string &, const FileOptions &, std::unique_ptr<FSWritableFile> *,
@@ -362,9 +370,33 @@ start:
         if (_FileExists(dirname, &inode).ok())
             return IOStatus::OK();
 
-        auto segment = FindNonFullSegment();
-        // segment->Allocate(dir);
-        return IOStatus::IOError(__FUNCTION__);
+        auto to_create = dirname.substr(inode->Name().length(), dirname.length() - inode->Name().length());
+        while (!to_create.empty())
+        {
+            S2FSBlock *res;
+            uint64_t pos = to_create.find(_fs_delimiter);
+            auto name = to_create.substr(0, pos == to_create.npos ? to_create.length() : pos);
+            S2FSSegment *s;
+            bool allocated = false;
+            while (s = FindNonFullSegment())
+            {
+                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_DIR_INODE), &res, inode))
+                {
+                    allocated = true;
+                    break;
+                }
+            }
+
+            if (!allocated)
+            {
+                return IOStatus::IOError();
+            }
+            inode = res;
+            to_create = to_create.substr(name.length() + 1, to_create.length() - name.length());
+            if (to_create == "/")
+                break;
+        }
+        return IOStatus::OK();
     }
 
     IOStatus

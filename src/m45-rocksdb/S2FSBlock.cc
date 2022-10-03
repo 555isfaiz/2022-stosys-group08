@@ -18,48 +18,32 @@ namespace ROCKSDB_NAMESPACE
         for (auto off : _offsets)
         {
             S2FSBlock *data;
-            bool need_lock = false;
             auto s = _fs->ReadSegment(addr_2_segment(off));
-            if (s)
-            {
-                s->WriteLock();
-                need_lock = true;
-                data = s->GetBlockByOffset(off);
-            }
-            else
-            {
-                data = new S2FSBlock;
-                char *buf = (char *)calloc(S2FSBlock::Size(), sizeof(char));
-                int ret = zns_udevice_read(_fs->_zns_dev, off, buf, S2FSBlock::Size());
-                if (ret)
-                {
-                    std::cout << "Error: reading block at: " << off << " during S2FSBlock::DirectoryLookUp."
-                              << "\n";
-                }
-                data->Deserialize(buf);
-                free(buf);
-            }
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
 
-            if (need_lock)
-            {
-                data->ReadLock();
-            }
-
+            data->ReadLock();
             for (auto attr : data->FileAttrs())
             {
                 if (attr->Name() == name)
                 {
-                    auto s = _fs->ReadSegment(addr_2_segment(attr->Offset()));
-                    return s->LookUp(attr->Name());
+                    auto ss = _fs->ReadSegment(addr_2_segment(attr->Offset()));
+                    S2FSBlock *res;
+                    if (ss != s)
+                    {
+                        ss->WriteLock();
+                        res = ss->LookUp(attr->Name());
+                        ss->Unlock();
+                    }
+                    else
+                        res = ss->LookUp(attr->Name());
+
+                    return res;
                 }
             }
 
-            if (need_lock)
-            {
-                s->Unlock();
-                data->Unlock();
-            }
-            delete data;
+            s->Unlock();
+            data->Unlock();
         }
         Unlock();
         return NULL;
@@ -221,25 +205,16 @@ namespace ROCKSDB_NAMESPACE
         Unlock();
     }
 
-    uint64_t S2FSBlock::GlobalOffset()
-    {
-        auto s = _fs->ReadSegment(_segment_addr);
-        s->ReadLock();
-        auto off = s->GetGlobalOffsetByINodeID(_id);
-        s->Unlock();
-        return off;
-    }
-
     int S2FSBlock::DirectoryAppend(S2FSFileAttr& fa)
     {
         WriteLock();
         auto inode = this;
-        S2FSSegment *segment;
+        S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
         std::list<S2FSBlock *> inodes;
         inodes.push_back(inode);
         while (inode->Next())
         {
-            segment = _fs->ReadSegment(inode->SegmentAddr());
+            segment = _fs->ReadSegment(addr_2_segment(inode->Next()));
             segment->WriteLock();
             inode = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Next()));
             inode->WriteLock();
@@ -247,7 +222,10 @@ namespace ROCKSDB_NAMESPACE
             inodes.push_back(inode);
         }
 
+        segment->WriteLock();
         auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
+        segment->Unlock();
+
         if ((data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
         {
             uint64_t allocated = 0, to_allocate = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
@@ -293,12 +271,12 @@ namespace ROCKSDB_NAMESPACE
     {
         WriteLock();
         auto inode = this;
-        S2FSSegment *segment;
+        S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
         std::list<S2FSBlock *> inodes;
         inodes.push_back(inode);
         while (inode->Next())
         {
-            segment = _fs->ReadSegment(inode->SegmentAddr());
+            segment = _fs->ReadSegment(addr_2_segment(inode->Next()));
             segment->WriteLock();
             inode = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Next()));
             inode->WriteLock();

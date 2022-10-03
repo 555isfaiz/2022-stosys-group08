@@ -17,7 +17,7 @@ namespace ROCKSDB_NAMESPACE
         // skip the first one. that's for inode map
         for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
-            if (_blocks.at(i) != NULL)
+            if (_blocks.at(i) == NULL)
             {
                 return block_2_inseg_offset(i);
             }
@@ -68,11 +68,9 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSBlock *S2FSSegment::LookUp(const std::string &name)
     {
-        WriteLock();
         if (map_contains(_name_2_inode, name))
         {
             auto addr = _inode_map.at(_name_2_inode.at(name));
-            Unlock();
             return GetBlockByOffset(addr);
         }
 
@@ -80,11 +78,9 @@ namespace ROCKSDB_NAMESPACE
         if (map_contains(_name_2_inode, name))
         {
             auto addr = _inode_map.at(_name_2_inode.at(name));
-            Unlock();
             return GetBlockByOffset(addr);
         }
 
-        Unlock();
         return NULL;
     }
 
@@ -109,6 +105,7 @@ namespace ROCKSDB_NAMESPACE
         {
             inode = new S2FSBlock(type, _addr_start);
             uint64_t empty = GetEmptyBlock();
+            inode->GlobalOffset(_addr_start + empty);
             _blocks[addr_2_block(empty)] = inode;
             _name_2_inode[name] = inode->ID();
             _inode_map[inode->ID()] = empty;
@@ -137,12 +134,13 @@ namespace ROCKSDB_NAMESPACE
             while (empty && allocated < to_allocate)
             {
                 inode->AddOffset(empty + Addr());
-                S2FSBlock *data = new S2FSBlock(type, _addr_start);
-                _blocks[addr_2_block(empty)] = data;
+                S2FSBlock *data_block = new S2FSBlock(type, _addr_start);
+                data_block->GlobalOffset(_addr_start + empty);
+                _blocks[addr_2_block(empty)] = data_block;
                 uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));
                 if (data)
                 {
-                    memcpy(data->Content(), data + allocated, to_copy);
+                    memcpy(data_block->Content(), data + allocated, to_copy);
                 }
                 allocated += to_copy;
                 empty = GetEmptyBlock();
@@ -174,12 +172,13 @@ namespace ROCKSDB_NAMESPACE
         while (empty && allocated < to_allocate)
         {
             inode->AddOffset(empty + Addr());
-            S2FSBlock *data = new S2FSBlock(type, _addr_start);
-            _blocks[addr_2_block(empty)] = data;
+            S2FSBlock *data_block = new S2FSBlock(type, _addr_start);
+            data_block->GlobalOffset(_addr_start + empty);
+            _blocks[addr_2_block(empty)] = data_block;
             uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));
             if (data)
             {
-                memcpy(data->Content(), data + allocated, to_copy);
+                memcpy(data_block->Content(), data + allocated, to_copy);
             }
             allocated += to_copy;
             empty = GetEmptyBlock();
@@ -187,6 +186,59 @@ namespace ROCKSDB_NAMESPACE
 
         Unlock();
         return allocated;
+    }
+
+    int S2FSSegment::RemoveINode(uint64_t inode_id)
+    {
+        _inode_map[inode_id] = 0;
+        for (auto p : _name_2_inode)
+        {
+            if (p.second == inode_id)
+            {
+                _name_2_inode.erase(p.first);
+                break;
+            }
+        }
+    }
+
+    int S2FSSegment::Free(uint64_t inode_id) 
+    {
+        if (!map_contains(_inode_map, inode_id))
+        {
+            std::cout << "Error: freeing non-existing inode id: " << inode_id << " during S2FSSegment::Free." << "\n";
+            return -1;
+        }
+        WriteLock();
+        std::list<S2FSBlock *> inodes;
+        std::list<S2FSSegment *> segments;
+        uint64_t off = _inode_map.at(inode_id);
+        auto inode = GetBlockByOffset(off);
+        auto segment = this;
+        segments.push_back(this);
+        inodes.push_back(inode);
+        while (inode->Next())
+        {
+            segment = _fs->ReadSegment(addr_2_segment(inode->Next()));
+            segment->WriteLock();
+            inode = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Next()));
+            inode->WriteLock();
+            segments.push_back(segment);
+            inodes.push_back(inode);
+        }
+
+        while (!inodes.empty())
+        {
+            inode = inodes.back();
+            segment = segments.back();
+            segment->RemoveINode(inode->ID());
+            segment->Unlock();
+            inode->Unlock();
+            delete inode;
+            inodes.pop_back();
+            segments.pop_back();
+        }
+
+        return 0;
     }
 
     void S2FSSegment::Preload(char *buffer)
@@ -235,6 +287,7 @@ namespace ROCKSDB_NAMESPACE
             else
             {
                 block->SegmentAddr(_addr_start);
+                block->GlobalOffset(_addr_start + i * S2FSBlock::Size());
                 _blocks[i] = block;
                 if (block->Type() == ITYPE_DIR_DATA)
                 {

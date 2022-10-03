@@ -51,11 +51,10 @@ namespace ROCKSDB_NAMESPACE
         S2FSObject(){}
         ~S2FSObject(){}
 
-        inline int ReadLock() { return pthread_rwlock_rdlock(&_rwlock); }
-        inline int WriteLock() { return pthread_rwlock_wrlock(&_rwlock); }
-        inline int Unlock() { return pthread_rwlock_unlock(&_rwlock); }
+        virtual inline int ReadLock() { return pthread_rwlock_rdlock(&_rwlock); }
+        virtual inline int WriteLock() { return pthread_rwlock_wrlock(&_rwlock); }
+        virtual inline int Unlock() { return pthread_rwlock_unlock(&_rwlock); }
 
-        // Need to free the return value
         virtual void Serialize(char *buffer) = 0;
         virtual void Deserialize(char *buffer) = 0;
     };
@@ -115,6 +114,7 @@ namespace ROCKSDB_NAMESPACE
         // Only valid for ITYPE_FILE_DATA type.
         uint64_t _content_size;
         uint64_t _segment_addr;
+        uint64_t _global_offset;
 
         void SerializeFileInode(char *buffer);
         void DeserializeFileInode(char *buffer);
@@ -177,7 +177,8 @@ namespace ROCKSDB_NAMESPACE
         int ChainReadLock();
         int ChainWriteLock();
         int ChainUnlock();
-        uint64_t GlobalOffset();
+        uint64_t GlobalOffset()                                 { return _global_offset; }
+        void GlobalOffset(uint64_t global_offset)               { _global_offset = global_offset; }
         int DataAppend(const char *data, uint64_t len);
         int DirectoryAppend(S2FSFileAttr& fa);
 
@@ -201,7 +202,7 @@ namespace ROCKSDB_NAMESPACE
         ~S2FSSegment(){}
 
         void Preload(char *buffer);
-        void Serialize(char *buffer);   // TODO: should return int for serialized length
+        void Serialize(char *buffer);
         void Deserialize(char *buffer);
 
         // return: in-segment offset
@@ -212,10 +213,15 @@ namespace ROCKSDB_NAMESPACE
         // No lock ops in this function, not thread safe
         // Make sure to use WriteLock() before calling this
         S2FSBlock *GetBlockByOffset(uint64_t offset);
+        // Get inode block by name
+        // No lock ops in this function, not thread safe
+        // Make sure to use WriteLock() before calling this
         S2FSBlock *LookUp(const std::string &name);
         uint64_t AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir);
         uint64_t AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res);
-        int Free(uint64_t inode_id) {}
+        // Equivalent to delete
+        int Free(uint64_t inode_id);
+        int RemoveINode(uint64_t inode_id);
         int Read();
         int Write();
         int Flush();
