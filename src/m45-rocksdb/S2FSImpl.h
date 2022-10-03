@@ -98,6 +98,21 @@ namespace ROCKSDB_NAMESPACE
         } // sync data
 
     };
+
+    class S2FSRandomAccessFile : public FSRandomAccessFile
+    {
+    private:
+        S2FSBlock *_inode;
+    public:
+        S2FSRandomAccessFile(S2FSBlock *inode)
+        : _inode(inode)
+        {}
+        ~S2FSRandomAccessFile() {}
+
+        virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions& options,
+                        Slice* result, char* scratch,
+                        IODebugContext* dbg) const = 0;
+    };
 }
 
 #endif
