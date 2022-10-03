@@ -5,50 +5,6 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::Size() { return _fs->_zns_dev->lba_size_bytes; }
 
-    S2FSBlock *S2FSBlock::DirectoryLookUp(std::string &name)
-    {
-        if (_type != ITYPE_DIR_INODE)
-        {
-            std::cout << "Error: looking up dir in a non-dir inode type: " << _type << " name: " << name << " during S2FSBlock::DirectoryLookUp."
-                      << "\n";
-            return NULL;
-        }
-
-        ReadLock();
-        for (auto off : _offsets)
-        {
-            S2FSBlock *data;
-            auto s = _fs->ReadSegment(addr_2_segment(off));
-            s->WriteLock();
-            data = s->GetBlockByOffset(off);
-
-            data->ReadLock();
-            for (auto attr : data->FileAttrs())
-            {
-                if (attr->Name() == name)
-                {
-                    auto ss = _fs->ReadSegment(addr_2_segment(attr->Offset()));
-                    S2FSBlock *res;
-                    if (ss != s)
-                    {
-                        ss->WriteLock();
-                        res = ss->LookUp(attr->Name());
-                        ss->Unlock();
-                    }
-                    else
-                        res = ss->LookUp(attr->Name());
-
-                    return res;
-                }
-            }
-
-            s->Unlock();
-            data->Unlock();
-        }
-        Unlock();
-        return NULL;
-    }
-
     void S2FSBlock::SerializeFileInode(char *buffer)
     {
         *buffer = _type << 4;
@@ -159,6 +115,7 @@ namespace ROCKSDB_NAMESPACE
     void S2FSBlock::Deserialize(char *buffer)
     {
         char type = *buffer >> 4;
+        _loaded = true;
         switch (type)
         {
         case 1:
@@ -180,7 +137,7 @@ namespace ROCKSDB_NAMESPACE
             DeserializeDirData(buffer);
             break;
         case 0:
-            _type = ITYPE_UNKNOWN;
+            // _type = ITYPE_UNKNOWN;
             break;
 
         default:
@@ -190,24 +147,78 @@ namespace ROCKSDB_NAMESPACE
         }
     }
 
+    void S2FSBlock::LivenessCheck()
+    {
+        if (_loaded)
+            return;
+        
+        _fs->ReadSegment(_segment_addr)->GetBlockByOffset(addr_2_inseg_offset(GlobalOffset()));
+    }
+
     int S2FSBlock::ChainReadLock()
     {
-        ReadLock();
+        return ReadLock();
     }
 
     int S2FSBlock::ChainWriteLock()
     {
-        WriteLock();
+        return WriteLock();
     }
 
     int S2FSBlock::ChainUnlock()
     {
+        return Unlock();
+    }
+
+    S2FSBlock* S2FSBlock::DirectoryLookUp(std::string &name)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: looking up dir in a non-dir inode type: " << _type << " name: " << name << " during S2FSBlock::DirectoryLookUp."
+                      << "\n";
+            return NULL;
+        }
+
+        WriteLock();
+        LivenessCheck();
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            for (auto attr : data->FileAttrs())
+            {
+                if (attr->Name() == name)
+                {
+                    auto ss = _fs->ReadSegment(addr_2_segment(attr->Offset()));
+                    S2FSBlock *res;
+                    if (ss != s)
+                    {
+                        ss->WriteLock();
+                        res = ss->LookUp(attr->Name());
+                        ss->Unlock();
+                    }
+                    else
+                        res = ss->LookUp(attr->Name());
+
+                    return res;
+                }
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
         Unlock();
+        return NULL;
     }
 
     int S2FSBlock::DirectoryAppend(S2FSFileAttr& fa)
     {
         WriteLock();
+        LivenessCheck();
         auto inode = this;
         S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
         std::list<S2FSBlock *> inodes;
@@ -276,6 +287,7 @@ namespace ROCKSDB_NAMESPACE
     int S2FSBlock::DataAppend(const char *data, uint64_t len)
     {
         WriteLock();
+        LivenessCheck();
         auto inode = this;
         S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
         std::list<S2FSBlock *> inodes;

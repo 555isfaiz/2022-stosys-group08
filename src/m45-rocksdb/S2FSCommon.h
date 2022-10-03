@@ -115,6 +115,7 @@ namespace ROCKSDB_NAMESPACE
         uint64_t _content_size;
         uint64_t _segment_addr;
         uint64_t _global_offset;
+        bool _loaded;
 
         void SerializeFileInode(char *buffer);
         void DeserializeFileInode(char *buffer);
@@ -131,7 +132,8 @@ namespace ROCKSDB_NAMESPACE
         _prev(0),
         _content(0),
         _content_size(0),
-        _segment_addr(segmeng_addr) 
+        _segment_addr(segmeng_addr),
+        _loaded(false)
         {
             if (type == ITYPE_FILE_DATA)
             {
@@ -145,9 +147,10 @@ namespace ROCKSDB_NAMESPACE
 
         void Serialize(char *buffer);
         void Deserialize(char *buffer);
+        // Call this with write lock acquired
+        void LivenessCheck();
 
         inline void AddOffset(uint64_t offset)                  { _offsets.push_back(offset); }
-        S2FSBlock *DirectoryLookUp(std::string &name);
         inline uint64_t Next()                                  { return _next; }
         inline void Next(uint64_t next)                         { _next = next; }
         inline uint64_t Prev()                                  { return _prev; }
@@ -173,12 +176,15 @@ namespace ROCKSDB_NAMESPACE
         inline uint64_t ContentSize()                           { return _content_size; }
         inline void SegmentAddr(uint64_t addr)                  { _segment_addr = addr; }
         inline uint64_t SegmentAddr()                           { return _segment_addr; }
+        inline void Loaded(bool loaded)                         { _loaded = loaded; }
+        inline bool Loaded()                                    { return _loaded; }
 
         int ChainReadLock();
         int ChainWriteLock();
         int ChainUnlock();
         uint64_t GlobalOffset()                                 { return _global_offset; }
         void GlobalOffset(uint64_t global_offset)               { _global_offset = global_offset; }
+        S2FSBlock *DirectoryLookUp(std::string &name);
         int DataAppend(const char *data, uint64_t len);
         int DirectoryAppend(S2FSFileAttr& fa);
 

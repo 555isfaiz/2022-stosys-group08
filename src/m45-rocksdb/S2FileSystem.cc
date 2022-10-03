@@ -250,6 +250,7 @@ start:
     // not exist, returns a non-OK status.
     //
     // The returned file will only be accessed by one thread at a time.
+    // Needed
     IOStatus S2FileSystem::NewSequentialFile(const std::string &fname, const FileOptions &file_opts,
                                              std::unique_ptr<FSSequentialFile> *result, IODebugContext *dbg)
     {
@@ -271,6 +272,7 @@ start:
     // status.
     //
     // The returned file may be concurrently accessed by multiple threads.
+    // Needed
     IOStatus S2FileSystem::NewRandomAccessFile(const std::string &fname, const FileOptions &file_opts,
                                                std::unique_ptr<FSRandomAccessFile> *result, IODebugContext *dbg)
     {
@@ -436,17 +438,20 @@ start:
         return IOStatus::IOError(__FUNCTION__);
     }
 
+    // Needed
     IOStatus S2FileSystem::GetAbsolutePath(const std::string &db_path, const IOOptions &options, std::string *output_path,
                                            IODebugContext *dbg)
     {
         return IOStatus::IOError(__FUNCTION__);
     }
 
+    // Needed
     IOStatus S2FileSystem::DeleteFile(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
         return IOStatus::IOError(__FUNCTION__);
     }
 
+    // Needed
     IOStatus S2FileSystem::NewLogger(const std::string &fname, const IOOptions &io_opts, std::shared_ptr<Logger> *result,
                                      IODebugContext *dbg)
     {
@@ -542,6 +547,11 @@ start:
     IOStatus S2FileSystem::RenameFile(const std::string &src, const std::string &target, const IOOptions &options,
                                       IODebugContext *dbg)
     {
+        S2FSBlock *inode;
+        if (_FileExists(src, &inode).IsNotFound())
+            return IOStatus::NotFound();
+
+        
         return IOStatus::IOError(__FUNCTION__);
     }
 
@@ -558,6 +568,7 @@ start:
     //         NotFound if "dir" does not exist, the calling process does not have
     //                  permission to access "dir", or if "dir" is invalid.
     //         IOError if an IO Error was encountered
+    // Needed
     IOStatus S2FileSystem::GetChildren(const std::string &dir, const IOOptions &options, std::vector<std::string> *result,
                                        IODebugContext *dbg)
     {

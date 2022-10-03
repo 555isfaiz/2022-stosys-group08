@@ -10,7 +10,7 @@ namespace ROCKSDB_NAMESPACE
             pthread_mutex_unlock(&_inner_mutex);
             return -1;
         }
-        _inode->WriteLock();
+        // _inode->WriteLock();
         _locked = pthread_self();
         pthread_mutex_unlock(&_inner_mutex);
         return 0;
@@ -24,7 +24,7 @@ namespace ROCKSDB_NAMESPACE
             pthread_mutex_unlock(&_inner_mutex);
             return -1;
         }
-        _inode->Unlock();
+        // _inode->Unlock();
         _locked = 0;
         pthread_mutex_unlock(&_inner_mutex);
         return 0;

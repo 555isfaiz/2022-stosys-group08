@@ -46,6 +46,12 @@ namespace ROCKSDB_NAMESPACE
         // block is occupied, but not present in memory
         if ((uint64_t)block == 1)
         {
+            block = new S2FSBlock;
+            _blocks[addr_2_block(offset)] = block;
+        }
+
+        if (block && !block->Loaded())
+        {
             char buf[S2FSBlock::Size()] = {0};
             int ret = zns_udevice_read(_fs->_zns_dev, offset + _addr_start, buf, S2FSBlock::Size());
             if (ret)
@@ -55,14 +61,12 @@ namespace ROCKSDB_NAMESPACE
             }
             else
             {
-                S2FSBlock *block = new S2FSBlock;
                 block->Deserialize(buf);
-                _blocks[addr_2_block(offset)] = block;
-
                 if (block->Type() == ITYPE_DIR_INODE)
                     _name_2_inode[block->Name()] = block->ID();
             }
         }
+
         return block;
     }
 
@@ -155,7 +159,7 @@ namespace ROCKSDB_NAMESPACE
         Unlock();
 
         // Do this after releasing the lock, otherwise deadlock happens
-        if (parent_dir)
+        if (inode && parent_dir)
             parent_dir->DirectoryAppend(fa);
         return allocated;
     }
