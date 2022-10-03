@@ -181,6 +181,7 @@ namespace ROCKSDB_NAMESPACE
 
         WriteLock();
         LivenessCheck();
+        S2FSBlock *res = NULL;
         for (auto off : _offsets)
         {
             S2FSBlock *data;
@@ -194,7 +195,6 @@ namespace ROCKSDB_NAMESPACE
                 if (attr->Name() == name)
                 {
                     auto ss = _fs->ReadSegment(addr_2_segment(attr->Offset()));
-                    S2FSBlock *res;
                     if (ss != s)
                     {
                         ss->WriteLock();
@@ -211,8 +211,17 @@ namespace ROCKSDB_NAMESPACE
             s->Unlock();
             data->Unlock();
         }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            res = in->DirectoryLookUp(name);
+        }
         Unlock();
-        return NULL;
+        return res;
     }
 
     int S2FSBlock::DirectoryAppend(S2FSFileAttr& fa)
