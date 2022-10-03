@@ -8,6 +8,7 @@
 #include "S2FSCommon.h"
 
 #include <zns_device.h>
+#include <pthread.h>
 
 namespace ROCKSDB_NAMESPACE
 {
@@ -17,7 +18,8 @@ namespace ROCKSDB_NAMESPACE
     {
     private:
         S2FSBlock *_inode;
-        bool locked;
+        pthread_t _locked;
+        pthread_mutex_t _inner_mutex = PTHREAD_MUTEX_INITIALIZER;
     public:
         S2FSFileLock(S2FSBlock *inode)
         : _inode(inode)

@@ -175,6 +175,10 @@ start:
             block = segment->LookUp("/");
             segment->Unlock();
             next = name.substr(del_pos + 1, name.length() - del_pos - 1);
+            if (next.at(0) == '/')
+            {
+                next = next.substr(1, name.length() - 1);
+            }
         }
         else if (name.length() != 0)
         {
@@ -183,6 +187,10 @@ start:
             {
                 n = name.substr(0, del_pos);
                 next = name.substr(del_pos + 1, name.length() - del_pos - 1);
+                if (next.at(0) == '/')
+                {
+                    next = next.substr(1, name.length() - 1);
+                }
             }
             else
             {
@@ -467,6 +475,24 @@ start:
     // May create the named file if it does not already exist.
     IOStatus S2FileSystem::LockFile(const std::string &fname, const IOOptions &options, FileLock **lock, IODebugContext *dbg)
     {
+        S2FSBlock *inode;
+        S2FSSegment *s;
+        if (!_FileExists(fname, &inode).ok())
+        {
+            bool allocated = false;
+            S2FSBlock *new_inode;
+            while (s = FindNonFullSegment())
+            {
+                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
+                {
+                    allocated = true;
+                    break;
+                }
+            }
+
+            if (!allocated)
+                return IOStatus::IOError(__FUNCTION__);
+        }
         return IOStatus::IOError(__FUNCTION__);
     }
 
