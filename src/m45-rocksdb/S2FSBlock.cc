@@ -226,15 +226,15 @@ namespace ROCKSDB_NAMESPACE
         auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
         segment->Unlock();
 
-        if ((data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
+        if (!data_block || (data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > S2FSBlock::MaxDataSize(ITYPE_DIR_INODE))
         {
-            uint64_t allocated = 0, to_allocate = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
+            uint64_t allocated = 0, to_allocate = S2FSBlock::MaxDataSize(ITYPE_DIR_INODE);
             do
             {
                 uint64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate - allocated, &data_block);
                 allocated += tmp;
                 // this segment is full, allocate new in next segment
-                if (tmp == 0)
+                if (tmp < 0)
                 {
                     segment = _fs->FindNonFullSegment();
                     if (!segment)
@@ -243,7 +243,11 @@ namespace ROCKSDB_NAMESPACE
                     }
 
                     S2FSBlock *res;
-                    tmp = segment->AllocateNew("", ITYPE_FILE_DATA, NULL, to_allocate - allocated, &res, NULL);
+                    tmp = segment->AllocateNew("", ITYPE_DIR_INODE, NULL, to_allocate - allocated, &res, NULL);
+                    if (tmp < 0)
+                    {
+                        return -1;
+                    }
                     inode->Next(res->GlobalOffset());
                     res->Prev(inode->GlobalOffset());
                     res->WriteLock();
@@ -253,6 +257,8 @@ namespace ROCKSDB_NAMESPACE
                 }
 
             } while (allocated < to_allocate);
+
+            segment->GetBlockByOffset(inode->Offsets().back())->AddFileAttr(fa);
         }
         else
         {
@@ -293,7 +299,7 @@ namespace ROCKSDB_NAMESPACE
                 uint64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + allocated, len - allocated, &data_block);
                 allocated += tmp;
                 // this segment is full, allocate new in next segment
-                if (tmp == 0)
+                if (tmp < 0)
                 {
                     segment = _fs->FindNonFullSegment();
                     if (!segment)
@@ -303,6 +309,10 @@ namespace ROCKSDB_NAMESPACE
 
                     S2FSBlock *res;
                     tmp = segment->AllocateNew("", ITYPE_FILE_DATA, data + allocated, len - allocated, &res, NULL);
+                    if (tmp < 0)
+                    {
+                        return -1;
+                    }
                     inode->Next(res->GlobalOffset());
                     res->Prev(inode->GlobalOffset());
                     res->WriteLock();

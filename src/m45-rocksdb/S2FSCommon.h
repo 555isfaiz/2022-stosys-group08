@@ -217,8 +217,8 @@ namespace ROCKSDB_NAMESPACE
         // No lock ops in this function, not thread safe
         // Make sure to use WriteLock() before calling this
         S2FSBlock *LookUp(const std::string &name);
-        uint64_t AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir);
-        uint64_t AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res);
+        int64_t AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir);
+        int64_t AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res);
         // Equivalent to delete
         int Free(uint64_t inode_id);
         int RemoveINode(uint64_t inode_id);

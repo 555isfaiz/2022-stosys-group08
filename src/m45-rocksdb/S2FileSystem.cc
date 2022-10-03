@@ -82,7 +82,7 @@ namespace ROCKSDB_NAMESPACE
             if (!segm_start && s->IsEmpty())
             {
                 S2FSBlock *b;
-                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_DIR_INODE), &b, NULL);
+                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, 0, &b, NULL);
             }
 
             if (!s->IsEmpty())
@@ -297,7 +297,7 @@ start:
         S2FSBlock *new_inode;
         while (s = FindNonFullSegment())
         {
-            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode))
+            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
             {
                 allocated = true;
                 break;
@@ -311,7 +311,7 @@ start:
         }
         else
         {
-            return IOStatus::IOError();
+            return IOStatus::IOError(__FUNCTION__);
         }
     }
 
@@ -343,7 +343,12 @@ start:
     S2FileSystem::NewDirectory(const std::string &name, const IOOptions &io_opts, std::unique_ptr<FSDirectory> *result,
                                IODebugContext *dbg)
     {
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSBlock *inode;
+        if (!_FileExists(name, &inode).ok())
+            return IOStatus::IOError(__FUNCTION__);
+
+        result->reset(new S2FSDirectory(inode));
+        return IOStatus::OK();
     }
 
     IOStatus S2FileSystem::GetFreeSpace(const std::string &, const IOOptions &, uint64_t *, IODebugContext *)
@@ -380,7 +385,7 @@ start:
             bool allocated = false;
             while (s = FindNonFullSegment())
             {
-                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_DIR_INODE), &res, inode))
+                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, 0, &res, inode) >= 0)
                 {
                     allocated = true;
                     break;
@@ -389,7 +394,7 @@ start:
 
             if (!allocated)
             {
-                return IOStatus::IOError();
+                return IOStatus::IOError(__FUNCTION__);
             }
             inode = res;
             to_create = to_create.substr(name.length() + 1, to_create.length() - name.length());

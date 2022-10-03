@@ -84,15 +84,15 @@ namespace ROCKSDB_NAMESPACE
         return NULL;
     }
 
-    uint64_t S2FSSegment::AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir)
+    int64_t S2FSSegment::AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir)
     {
         if (name.length() > MAX_NAME_LENGTH)
-            return 0;
+            return -1;
 
         if (type != ITYPE_DIR_INODE && type != ITYPE_FILE_INODE)
         {
             std::cout << "Error: allocating new for unknown block type: " << type << " during S2FSSegment::Allocate." << "\n";
-            return 0;
+            return -1;
         }
 
         WriteLock();
@@ -129,21 +129,24 @@ namespace ROCKSDB_NAMESPACE
         if (inode)
         {
             *res = inode;
-            uint64_t to_allocate = round_up(size, S2FSBlock::MaxDataSize(inode->Type()));
-            uint64_t empty = GetEmptyBlock();
-            while (empty && allocated < to_allocate)
+            if (size != 0)
             {
-                inode->AddOffset(empty + Addr());
-                S2FSBlock *data_block = new S2FSBlock(type, _addr_start);
-                data_block->GlobalOffset(_addr_start + empty);
-                _blocks[addr_2_block(empty)] = data_block;
-                uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));
-                if (data)
+                uint64_t to_allocate = round_up(size, S2FSBlock::MaxDataSize(inode->Type()));
+                uint64_t empty = GetEmptyBlock();
+                while (empty && allocated < to_allocate)
                 {
-                    memcpy(data_block->Content(), data + allocated, to_copy);
+                    inode->AddOffset(empty + Addr());
+                    S2FSBlock *data_block = new S2FSBlock(type, _addr_start);
+                    data_block->GlobalOffset(_addr_start + empty);
+                    _blocks[addr_2_block(empty)] = data_block;
+                    uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));
+                    if (data)
+                    {
+                        memcpy(data_block->Content(), data + allocated, to_copy);
+                    }
+                    allocated += to_copy;
+                    empty = GetEmptyBlock();
                 }
-                allocated += to_copy;
-                empty = GetEmptyBlock();
             }
         }
         
@@ -157,12 +160,12 @@ namespace ROCKSDB_NAMESPACE
         return allocated;
     }
 
-    uint64_t S2FSSegment::AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res)
+    int64_t S2FSSegment::AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res)
     {
         WriteLock();
         if (!map_contains(_inode_map, inode_id))
         {
-            return 0;
+            return -1;
         }
 
         uint64_t allocated = 0;

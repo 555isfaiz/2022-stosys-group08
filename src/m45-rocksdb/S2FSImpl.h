@@ -13,13 +13,36 @@ namespace ROCKSDB_NAMESPACE
 {
     class S2FSBlock;
 
+    class S2FSFileLock : public FileLock
+    {
+    private:
+        S2FSBlock *_inode;
+        bool locked;
+    public:
+        S2FSFileLock(S2FSBlock *inode)
+        : _inode(inode)
+        {}
+        ~S2FSFileLock() {}
+
+        int Lock();
+        int Unlock();
+    };
+
     class S2FSDirectory : public FSDirectory
     {
     private:
-        /* data */
+        S2FSBlock *_inode;
     public:
-        S2FSDirectory(/* args */);
-        ~S2FSDirectory();
+        S2FSDirectory(S2FSBlock *inode)
+        : _inode(inode)
+        {}
+        ~S2FSDirectory() {}
+
+        virtual IOStatus Fsync(const IOOptions& options, IODebugContext* dbg) {};
+
+        virtual size_t GetUniqueId(char* /*id*/, size_t /*max_size*/) const {
+            return 0;
+        }
     };
     
     class S2FSWritableFile : public FSWritableFile
