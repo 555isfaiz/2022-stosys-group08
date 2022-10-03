@@ -13,6 +13,7 @@ namespace ROCKSDB_NAMESPACE
         _inode->WriteLock();
         _locked = pthread_self();
         pthread_mutex_unlock(&_inner_mutex);
+        return 0;
     }
 
     int S2FSFileLock::Unlock()
@@ -26,6 +27,7 @@ namespace ROCKSDB_NAMESPACE
         _inode->Unlock();
         _locked = 0;
         pthread_mutex_unlock(&_inner_mutex);
+        return 0;
     }
 
     IOStatus S2FSWritableFile::Append(const Slice &data, const IOOptions &options,

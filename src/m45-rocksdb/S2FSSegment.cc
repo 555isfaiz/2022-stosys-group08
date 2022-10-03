@@ -136,7 +136,7 @@ namespace ROCKSDB_NAMESPACE
                 while (empty && allocated < to_allocate)
                 {
                     inode->AddOffset(empty + Addr());
-                    S2FSBlock *data_block = new S2FSBlock(type, _addr_start);
+                    S2FSBlock *data_block = new S2FSBlock(data_type, _addr_start);
                     data_block->GlobalOffset(_addr_start + empty);
                     _blocks[addr_2_block(empty)] = data_block;
                     uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));

@@ -23,6 +23,7 @@ namespace ROCKSDB_NAMESPACE
     public:
         S2FSFileLock(S2FSBlock *inode)
         : _inode(inode)
+        , _locked(0)
         {}
         ~S2FSFileLock() {}
 
@@ -77,10 +78,21 @@ namespace ROCKSDB_NAMESPACE
             return Append(data, options, dbg);
         }
 
-        virtual IOStatus Close(const IOOptions &options, IODebugContext *dbg) {}
-        virtual IOStatus Flush(const IOOptions &options, IODebugContext *dbg) {}
+        virtual IOStatus Close(const IOOptions &options, IODebugContext *dbg) 
+        {
+            return IOStatus::OK();
+        }
+        
+        virtual IOStatus Flush(const IOOptions &options, IODebugContext *dbg) 
+        {
+            return IOStatus::OK();
+        }
+
         virtual IOStatus Sync(const IOOptions &options,
-                              IODebugContext *dbg){} // sync data
+                              IODebugContext *dbg)
+        {
+            return IOStatus::OK();
+        } // sync data
 
     };
 }

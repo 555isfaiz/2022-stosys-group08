@@ -175,7 +175,7 @@ start:
             block = segment->LookUp("/");
             segment->Unlock();
             next = name.substr(del_pos + 1, name.length() - del_pos - 1);
-            if (next.at(0) == '/')
+            if (!next.empty() && next.at(0) == '/')
             {
                 next = next.substr(1, name.length() - 1);
             }
@@ -187,7 +187,7 @@ start:
             {
                 n = name.substr(0, del_pos);
                 next = name.substr(del_pos + 1, name.length() - del_pos - 1);
-                if (next.at(0) == '/')
+                if (!next.empty() && next.at(0) == '/')
                 {
                     next = next.substr(1, name.length() - 1);
                 }
@@ -224,7 +224,10 @@ start:
         std::string name = fname;
         while ((pos = name.find(delimiter)) != name.npos)
         {
-            name = name.substr(0, pos);
+            if (pos == 0)
+                name = name.substr(1, name.length() - 1);
+            else
+                name = name.substr(pos + 1, name.length() - pos - 1);
         }
         return name;
     }
@@ -413,33 +416,7 @@ start:
         if (_FileExists(dirname, &inode).ok())
             return IOStatus::OK();
 
-        auto to_create = dirname.substr(inode->Name().length(), dirname.length() - inode->Name().length());
-        while (!to_create.empty())
-        {
-            S2FSBlock *res;
-            uint64_t pos = to_create.find(_fs_delimiter);
-            auto name = to_create.substr(0, pos == to_create.npos ? to_create.length() : pos);
-            S2FSSegment *s;
-            bool allocated = false;
-            while (s = FindNonFullSegment())
-            {
-                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, 0, &res, inode) >= 0)
-                {
-                    allocated = true;
-                    break;
-                }
-            }
-
-            if (!allocated)
-            {
-                return IOStatus::IOError(__FUNCTION__);
-            }
-            inode = res;
-            to_create = to_create.substr(name.length() + 1, to_create.length() - name.length());
-            if (to_create == "/")
-                break;
-        }
-        return IOStatus::OK();
+        return CreateDir(dirname, options, dbg);
     }
 
     IOStatus
@@ -486,7 +463,15 @@ start:
     // REQUIRES: lock has not already been unlocked.
     IOStatus S2FileSystem::UnlockFile(FileLock *lock, const IOOptions &options, IODebugContext *dbg)
     {
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSFileLock *fl = dynamic_cast<S2FSFileLock*>(lock);
+        if (fl->Unlock())
+        {
+            return IOStatus::IOError(__FUNCTION__);
+        }
+        else
+        {
+            return IOStatus::OK();
+        }
     }
 
     // Lock the specified file.  Used to prevent concurrent access to
@@ -507,10 +492,10 @@ start:
     {
         S2FSBlock *inode;
         S2FSSegment *s;
+        S2FSBlock *new_inode;
         if (!_FileExists(fname, &inode).ok())
         {
             bool allocated = false;
-            S2FSBlock *new_inode;
             while (s = FindNonFullSegment())
             {
                 if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
@@ -523,7 +508,19 @@ start:
             if (!allocated)
                 return IOStatus::IOError(__FUNCTION__);
         }
-        return IOStatus::IOError(__FUNCTION__);
+
+        auto fl = new S2FSFileLock(new_inode);
+        if (fl->Lock())
+        {
+            delete fl;
+            *lock = NULL;
+            return IOStatus::IOError(__FUNCTION__);
+        }
+        else
+        {
+            *lock = fl;
+            return IOStatus::OK();
+        }
     }
 
     IOStatus

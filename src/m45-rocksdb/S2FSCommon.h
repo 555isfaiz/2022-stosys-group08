@@ -131,7 +131,13 @@ namespace ROCKSDB_NAMESPACE
         _prev(0),
         _content(0),
         _content_size(0),
-        _segment_addr(segmeng_addr) {}
+        _segment_addr(segmeng_addr) 
+        {
+            if (type == ITYPE_FILE_DATA)
+            {
+                _content = (char *)calloc(S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), sizeof(char));
+            }
+        }
 
         // Should followed by Deserialize()
         S2FSBlock(){}
@@ -140,13 +146,7 @@ namespace ROCKSDB_NAMESPACE
         void Serialize(char *buffer);
         void Deserialize(char *buffer);
 
-        inline void AddOffset(uint64_t offset) 
-        { 
-            WriteLock();
-            _offsets.push_back(offset); 
-            Unlock();
-        }
-
+        inline void AddOffset(uint64_t offset)                  { _offsets.push_back(offset); }
         S2FSBlock *DirectoryLookUp(std::string &name);
         inline uint64_t Next()                                  { return _next; }
         inline void Next(uint64_t next)                         { _next = next; }
@@ -218,6 +218,7 @@ namespace ROCKSDB_NAMESPACE
         // Make sure to use WriteLock() before calling this
         S2FSBlock *LookUp(const std::string &name);
         int64_t AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir);
+        // Should call WriteLock() for inode_id before calling this
         int64_t AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res);
         // Equivalent to delete
         int Free(uint64_t inode_id);
