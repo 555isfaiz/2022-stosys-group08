@@ -364,7 +364,37 @@ start:
     // Create the specified directory. Returns error if directory exists.
     IOStatus S2FileSystem::CreateDir(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSBlock *inode;
+        if (_FileExists(dirname, &inode).ok())
+            return IOStatus::IOError(__FUNCTION__);        
+
+        auto to_create = dirname.substr(inode->Name().length(), dirname.length() - inode->Name().length());
+        while (!to_create.empty())
+        {
+            S2FSBlock *res;
+            uint64_t pos = to_create.find(_fs_delimiter);
+            auto name = to_create.substr(0, pos == to_create.npos ? to_create.length() : pos);
+            S2FSSegment *s;
+            bool allocated = false;
+            while (s = FindNonFullSegment())
+            {
+                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, 0, &res, inode) >= 0)
+                {
+                    allocated = true;
+                    break;
+                }
+            }
+
+            if (!allocated)
+            {
+                return IOStatus::IOError(__FUNCTION__);
+            }
+            inode = res;
+            to_create = to_create.substr(name.length() + 1, to_create.length() - name.length());
+            if (to_create == "/")
+                break;
+        }
+        return IOStatus::OK();
     }
 
     // Creates directory if missing. Return Ok if it exists, or successful in
