@@ -163,7 +163,7 @@ start:
         return NULL;
     }
 
-    bool S2FileSystem::DirectoryLookUp(std::string &name, S2FSBlock *parent, S2FSBlock **res)
+    bool S2FileSystem::DirectoryLookUp(std::string &name, S2FSBlock *parent, bool set_parent, S2FSBlock **res)
     {
         auto del_pos = name.find(_fs_delimiter);
         S2FSBlock *block = NULL;
@@ -203,11 +203,14 @@ start:
         {
             if (!next.empty())
             {
-                return DirectoryLookUp(next, block, res);
+                return DirectoryLookUp(next, block, set_parent, res);
             }
             else
             {
-                *res = block;
+                if (set_parent)
+                    *res = parent;
+                else
+                    *res = block;
                 return true;
             }
         }
@@ -234,10 +237,10 @@ start:
 
     // Look up the file indicated by fname, and set res to the inode of that file
     // If the file does not exist, res will be set to the inode of the deepest existing directory of fname
-    IOStatus S2FileSystem::_FileExists(const std::string &fname, S2FSBlock **res)
+    IOStatus S2FileSystem::_FileExists(const std::string &fname, bool set_parent, S2FSBlock **res)
     {
         std::string name = fname;
-        auto exist = DirectoryLookUp(name, NULL, res);
+        auto exist = DirectoryLookUp(name, NULL, set_parent, res);
         if (exist)
             return IOStatus::OK();
         else
@@ -255,7 +258,7 @@ start:
                                              std::unique_ptr<FSSequentialFile> *result, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (_FileExists(fname, &inode).IsNotFound())
+        if (_FileExists(fname, false, &inode).IsNotFound())
             return IOStatus::NotFound();
         return IOStatus::IOError(__FUNCTION__);
     }
@@ -277,7 +280,7 @@ start:
                                                std::unique_ptr<FSRandomAccessFile> *result, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (_FileExists(fname, &inode).IsNotFound())
+        if (_FileExists(fname, false, &inode).IsNotFound())
             return IOStatus::NotFound();
         return IOStatus::IOError(__FUNCTION__);
     }
@@ -299,11 +302,11 @@ start:
     {
         S2FSBlock *inode;
         S2FSSegment *s;
-        if (_FileExists(fname, &inode).ok())
+        if (_FileExists(fname, false, &inode).ok())
         {
             s = ReadSegment(inode->SegmentAddr());
             s->Free(inode->ID());
-            _FileExists(fname, &inode);     // set inode to the parent dir
+            _FileExists(fname, false, &inode);     // set inode to the parent dir
         }
 
         bool allocated = false;
@@ -357,7 +360,7 @@ start:
                                IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (!_FileExists(name, &inode).ok())
+        if (!_FileExists(name, false, &inode).ok())
             return IOStatus::IOError(__FUNCTION__);
 
         result->reset(new S2FSDirectory(inode));
@@ -378,7 +381,7 @@ start:
     IOStatus S2FileSystem::CreateDir(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (_FileExists(dirname, &inode).ok())
+        if (_FileExists(dirname, false, &inode).ok())
             return IOStatus::IOError(__FUNCTION__);        
 
         auto to_create = dirname.substr(inode->Name().length(), dirname.length() - inode->Name().length());
@@ -415,7 +418,7 @@ start:
     IOStatus S2FileSystem::CreateDirIfMissing(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (_FileExists(dirname, &inode).ok())
+        if (_FileExists(dirname, false, &inode).ok())
             return IOStatus::OK();
 
         return CreateDir(dirname, options, dbg);
@@ -498,7 +501,7 @@ start:
         S2FSBlock *inode;
         S2FSSegment *s;
         S2FSBlock *new_inode;
-        if (!_FileExists(fname, &inode).ok())
+        if (!_FileExists(fname, false, &inode).ok())
         {
             bool allocated = false;
             while (s = FindNonFullSegment())
@@ -548,11 +551,11 @@ start:
                                       IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (_FileExists(src, &inode).IsNotFound())
+        if (_FileExists(src, true, &inode).IsNotFound())
             return IOStatus::NotFound();
 
-        
-        return IOStatus::IOError(__FUNCTION__);
+        inode->RenameChild(src, target);
+        return IOStatus::OK();
     }
 
     IOStatus S2FileSystem::GetChildrenFileAttributes(const std::string &dir, const IOOptions &options,
@@ -583,7 +586,7 @@ start:
     IOStatus S2FileSystem::FileExists(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        return _FileExists(fname, &inode);
+        return _FileExists(fname, false, &inode);
     }
 
     IOStatus

@@ -41,7 +41,10 @@ namespace ROCKSDB_NAMESPACE
         {}
         ~S2FSDirectory() {}
 
-        virtual IOStatus Fsync(const IOOptions& options, IODebugContext* dbg) {};
+        virtual IOStatus Fsync(const IOOptions& options, IODebugContext* dbg) 
+        {
+            return IOStatus::OK();
+        }
 
         virtual size_t GetUniqueId(char* /*id*/, size_t /*max_size*/) const {
             return 0;
@@ -82,7 +85,7 @@ namespace ROCKSDB_NAMESPACE
         {
             return IOStatus::OK();
         }
-        
+
         virtual IOStatus Flush(const IOOptions &options, IODebugContext *dbg) 
         {
             return IOStatus::OK();

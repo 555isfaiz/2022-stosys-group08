@@ -187,6 +187,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock *DirectoryLookUp(std::string &name);
         int DataAppend(const char *data, uint64_t len);
         int DirectoryAppend(S2FSFileAttr& fa);
+        void RenameChild(const std::string &src, const std::string &target);
 
         static uint64_t Size();
         static uint64_t MaxDataSize(INodeType type);

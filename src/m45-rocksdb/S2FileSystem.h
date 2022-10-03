@@ -143,7 +143,7 @@ namespace ROCKSDB_NAMESPACE {
 
         S2FSSegment *ReadSegment(uint64_t from);
         S2FSSegment *FindNonFullSegment();
-        bool DirectoryLookUp(std::string &name, S2FSBlock *parent, S2FSBlock **res);
+        bool DirectoryLookUp(std::string &name, S2FSBlock *parent, bool set_parent, S2FSBlock **res);
         // Read a segment regardless of whether it is in cache or not
         S2FSSegment *LoadSegmentFromDisk();
         // Read a segment regardless of whether it is in cache or not
@@ -155,7 +155,8 @@ namespace ROCKSDB_NAMESPACE {
         std::unordered_map<uint64_t, S2FSSegment*> _cache;
         uint64_t _wp_end;
 
-        IOStatus _FileExists(const std::string &fname, S2FSBlock **res);
+        // Set res to the target file inode or its parent dir inode, depending on the set_parent flag
+        IOStatus _FileExists(const std::string &fname, bool set_parent, S2FSBlock **res);
     };
 }
 

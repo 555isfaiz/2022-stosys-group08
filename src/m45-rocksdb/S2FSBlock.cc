@@ -198,12 +198,15 @@ namespace ROCKSDB_NAMESPACE
                     if (ss != s)
                     {
                         ss->WriteLock();
-                        res = ss->LookUp(attr->Name());
+                        res = ss->GetBlockByOffset(addr_2_inseg_offset(attr->Offset()));
                         ss->Unlock();
                     }
                     else
-                        res = ss->LookUp(attr->Name());
+                        res = ss->GetBlockByOffset(addr_2_inseg_offset(attr->Offset()));
 
+                    s->Unlock();
+                    data->Unlock();
+                    Unlock();
                     return res;
                 }
             }
@@ -355,6 +358,53 @@ namespace ROCKSDB_NAMESPACE
             inodes.pop_back();
         }
         return 0;
+    }
+
+    void S2FSBlock::RenameChild(const std::string &src, const std::string &target)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: I am not dir inode, can't do this. My type: " << _type << " during S2FSBlock::RenameChild."
+                      << "\n";
+            return;
+        }
+        WriteLock();
+        LivenessCheck();
+
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            for (auto attr : data->FileAttrs())
+            {
+                if (attr->Name() == src)
+                {
+                    attr->Name(target);
+                    s->Unlock();
+                    data->Unlock();
+                    Unlock();
+                    return;
+                }
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            in->RenameChild(src, target);
+        }
+
+        Unlock();
     }
 
     uint64_t S2FSBlock::MaxDataSize(INodeType type)
