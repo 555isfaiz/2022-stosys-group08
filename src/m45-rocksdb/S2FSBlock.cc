@@ -53,7 +53,8 @@ namespace ROCKSDB_NAMESPACE
         _next = *(uint64_t *)(buffer + (ptr += 1));
         _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
-        _name = std::string(buffer + (ptr += sizeof(uint64_t)), MAX_NAME_LENGTH);
+        uint32_t str_len = strlen(buffer + (ptr += sizeof(uint64_t)));
+        _name = std::string(buffer + (ptr += sizeof(uint64_t)), (str_len < MAX_NAME_LENGTH ? str_len : MAX_NAME_LENGTH));
         ptr += MAX_NAME_LENGTH;
         while (*(uint64_t *)(buffer + ptr))
         {
@@ -102,7 +103,7 @@ namespace ROCKSDB_NAMESPACE
         case ITYPE_FILE_DATA:
             *buffer = _type << 4;
             *(uint64_t *)(buffer + 1) = _content_size;
-            memcpy(buffer + 9, _content, Size() - 1);
+            memcpy(buffer + 9, _content, _content_size);
             break;
 
         default:
@@ -114,7 +115,7 @@ namespace ROCKSDB_NAMESPACE
 
     void S2FSBlock::Deserialize(char *buffer)
     {
-        char type = *buffer >> 4;
+        uint8_t type = *buffer >> 4;
         _loaded = true;
         switch (type)
         {
@@ -126,7 +127,7 @@ namespace ROCKSDB_NAMESPACE
             _type = ITYPE_FILE_DATA;
             _content = (char *)calloc(Size() - 1, sizeof(char));
             _content_size = *(uint64_t *)(buffer + 1);
-            memcpy(_content, buffer + 9, Size() - 1);
+            memcpy(_content, buffer + 9, _content_size);
             break;
         case 4:
             _type = ITYPE_DIR_INODE;
@@ -286,6 +287,7 @@ namespace ROCKSDB_NAMESPACE
         else
         {
             data_block->AddFileAttr(fa);
+            Flush();
         }
 
         while (!inodes.empty())
@@ -350,6 +352,7 @@ namespace ROCKSDB_NAMESPACE
         else
         {
             memcpy(data_block->Content() + data_block->ContentSize(), data, len);
+            Flush();
         }
 
         while (!inodes.empty())
@@ -420,6 +423,7 @@ namespace ROCKSDB_NAMESPACE
                 {
                     attr->Name(target);
                     s->Unlock();
+                    data->Flush();
                     data->Unlock();
                     Unlock();
                     return;
@@ -440,6 +444,21 @@ namespace ROCKSDB_NAMESPACE
         }
 
         Unlock();
+    }
+
+    int S2FSBlock::Flush()
+    {
+        char buf[S2FSBlock::Size()] = {0};
+        Serialize(buf);
+
+        int ret = zns_udevice_write(_fs->_zns_dev, _global_offset, buf, S2FSBlock::Size());
+        if (ret)
+        {
+            std::cout << "Error: nvme write error at: " << _global_offset << " ret:" << ret << " during S2FSBlock::Flush."
+                      << "\n";
+            return -1;
+        }
+        return 0;
     }
 
     uint64_t S2FSBlock::MaxDataSize(INodeType type)
