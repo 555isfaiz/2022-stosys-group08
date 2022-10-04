@@ -466,9 +466,11 @@ namespace ROCKSDB_NAMESPACE
         if (!_loaded)
             return 0;
 
-        Flush();
-        _loaded = false;
+        int ret = Flush();
+        if (ret)
+            return ret;
 
+        _loaded = false;
         switch (_type)
         {
         case ITYPE_DIR_DATA:
@@ -494,7 +496,7 @@ namespace ROCKSDB_NAMESPACE
         default:
             break;
         }
-        
+
         return 0;
     }
 

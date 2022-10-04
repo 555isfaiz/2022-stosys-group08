@@ -241,7 +241,6 @@ namespace ROCKSDB_NAMESPACE
         int Flush();
         // No locking inside
         int Offload();
-        // No locking inside
         int OnGC();
 
         inline uint64_t Addr() { return _addr_start; }

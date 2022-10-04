@@ -287,6 +287,51 @@ namespace ROCKSDB_NAMESPACE
         return 0;
     }
 
+    int S2FSSegment::OnGC()
+    {
+        WriteLock();
+
+        _fs->LoadSegmentFromDisk(_addr_start);
+        std::vector<S2FSBlock *> blocks(_blocks.size());
+        uint64_t ptr = _reserve_for_inode;
+        bool changed = false;
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        {
+            auto block = _blocks[i];
+            if (!block || block == (S2FSBlock *)1)
+                continue;
+
+            blocks[ptr] = block;
+            if (ptr != i)
+                changed = true;
+            
+            uint64_t new_inseg_off = block_2_inseg_offset(ptr);
+            if (map_contains(_inode_map, block->ID()))
+            {
+                _inode_map[block->ID()] = new_inseg_off;
+            }
+
+            block->WriteLock();
+            // Update _prev and _next for dir/file inodes if needed...
+            if (block->Type() == ITYPE_DIR_INODE || block->Type() == ITYPE_FILE_INODE)
+            {
+                // if ()
+            }
+
+            // change inode->_offsets if needed...
+            block->Unlock();
+        }
+
+        if (changed)
+        {
+            _blocks = blocks;
+            Flush();
+        }
+
+        Unlock();
+        return 0;
+    }
+
     void S2FSSegment::Preload(char *buffer)
     {
         for (uint32_t c = 0; c < _reserve_for_inode * S2FSBlock::Size(); c += INODE_MAP_ENTRY_LENGTH)
@@ -327,8 +372,15 @@ namespace ROCKSDB_NAMESPACE
 
         for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
-            S2FSBlock *block = new S2FSBlock;
+            S2FSBlock *block;
+            if (_blocks.at(i) && _blocks.at(i) != (S2FSBlock *)1)
+                block = _blocks.at(i);
+            else
+                block = new S2FSBlock;
+
+            block->WriteLock();
             block->Deserialize(buffer + i * S2FSBlock::Size());
+            block->Unlock();
 
             if (block->Type() == 0)
                 delete block;
