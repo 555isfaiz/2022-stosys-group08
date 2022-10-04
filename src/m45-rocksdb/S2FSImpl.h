@@ -130,9 +130,9 @@ namespace ROCKSDB_NAMESPACE
 
         virtual IOStatus Read(size_t n, const IOOptions &options,
                               Slice *result, char *scratch,
-                              IODebugContext *dbg) const;
+                              IODebugContext *dbg);
 
-        virtual IOStatus Skip(uint64_t n) const;
+        virtual IOStatus Skip(uint64_t n);
         // Not make any sense to have the addoffset function
         // Still need modify
         void AddOffset(uint64_t n)

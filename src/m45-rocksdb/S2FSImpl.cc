@@ -31,7 +31,7 @@ namespace ROCKSDB_NAMESPACE
     }
 
     IOStatus S2FSWritableFile::Append(const Slice &data, const IOOptions &options,
-                                IODebugContext *dbg)
+                                      IODebugContext *dbg)
     {
         if (_inode->DataAppend(data.data(), data.size()))
         {
@@ -40,9 +40,9 @@ namespace ROCKSDB_NAMESPACE
         return IOStatus::OK();
     }
 
-    IOStatus S2FSRandomAccessFile::Read(uint64_t offset, size_t n, const IOOptions& options,
-                        Slice* result, char* scratch,
-                        IODebugContext* dbg) const
+    IOStatus S2FSRandomAccessFile::Read(uint64_t offset, size_t n, const IOOptions &options,
+                                        Slice *result, char *scratch,
+                                        IODebugContext *dbg) const
     {
         if (_inode->Read(scratch, n, offset, 0))
         {
@@ -56,7 +56,7 @@ namespace ROCKSDB_NAMESPACE
 
     IOStatus S2FSSequentialFile::Read(size_t n, const IOOptions &options,
                                       Slice *result, char *scratch,
-                                      IODebugContext *dbg) const
+                                      IODebugContext *dbg)
     {
         if (_inode->Read(scratch, n, _offset, 0))
         {
@@ -68,7 +68,7 @@ namespace ROCKSDB_NAMESPACE
         return IOStatus::OK();
     }
 
-    IOStatus S2FSSequentialFile::Skip(uint64_t n) const
+    IOStatus S2FSSequentialFile::Skip(uint64_t n)
     {
         _inode->AddOffset(n);
         return IOStatus::OK();
