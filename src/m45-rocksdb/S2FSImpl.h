@@ -96,7 +96,6 @@ namespace ROCKSDB_NAMESPACE
         {
             return IOStatus::OK();
         } // sync data
-
     };
 
     class S2FSRandomAccessFile : public FSRandomAccessFile
@@ -113,7 +112,7 @@ namespace ROCKSDB_NAMESPACE
 
         virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions &options,
                               Slice *result, char *scratch,
-                              IODebugContext *dbg) const = 0;
+                              IODebugContext *dbg) const;
     };
 
     class S2FSSequentialFile : public FSSequentialFile
@@ -130,9 +129,9 @@ namespace ROCKSDB_NAMESPACE
 
         virtual IOStatus Read(size_t n, const IOOptions &options,
                               Slice *result, char *scratch,
-                              IODebugContext *dbg) const = 0;
+                              IODebugContext *dbg) const;
 
-        virtual IOStatus Skip(uint64_t n) const = 0;
+        virtual IOStatus Skip(uint64_t n) const;
     };
 }
 

@@ -151,7 +151,7 @@ namespace ROCKSDB_NAMESPACE
     {
         if (_loaded)
             return;
-        
+
         _fs->ReadSegment(_segment_addr)->GetBlockByOffset(addr_2_inseg_offset(GlobalOffset()));
     }
 
@@ -170,7 +170,7 @@ namespace ROCKSDB_NAMESPACE
         return Unlock();
     }
 
-    S2FSBlock* S2FSBlock::DirectoryLookUp(std::string &name)
+    S2FSBlock *S2FSBlock::DirectoryLookUp(std::string &name)
     {
         if (_type != ITYPE_DIR_INODE)
         {
@@ -227,7 +227,7 @@ namespace ROCKSDB_NAMESPACE
         return res;
     }
 
-    int S2FSBlock::DirectoryAppend(S2FSFileAttr& fa)
+    int S2FSBlock::DirectoryAppend(S2FSFileAttr &fa)
     {
         WriteLock();
         LivenessCheck();
@@ -357,6 +357,41 @@ namespace ROCKSDB_NAMESPACE
             inodes.back()->Unlock();
             inodes.pop_back();
         }
+        return 0;
+    }
+
+    int S2FSBlock::Read(char *buf, uint64_t n, uint64_t offset, uint64_t buf_offset)
+    {
+        WriteLock();
+        LivenessCheck();
+        uint64_t cur_off = 0, read_num = 0, buf_off = buf_offset;
+        for (auto off : _offsets)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            auto data_block = s->GetBlockByOffset(addr_2_inseg_offset(off));
+
+            if (cur_off + S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) > offset)
+            {
+                uint64_t in_block_off = offset - cur_off, max_readable = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) - in_block_off;
+                
+                uint64_t to_read = max_readable >= n ? n : max_readable;
+                memcpy(buf + buf_off, data_block->Content() + in_block_off, to_read);
+                buf_off += to_read;
+                read_num += to_read;
+            }
+            cur_off += S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
+        }
+
+        if (read_num < n && _next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            in->Read(buf, n - read_num, offset - cur_off, buf_off);
+        }
+
+        Unlock();
         return 0;
     }
 
