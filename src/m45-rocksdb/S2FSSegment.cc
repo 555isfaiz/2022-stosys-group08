@@ -207,6 +207,7 @@ namespace ROCKSDB_NAMESPACE
                 break;
             }
         }
+        return 0;
     }
 
     int S2FSSegment::Free(uint64_t inode_id) 

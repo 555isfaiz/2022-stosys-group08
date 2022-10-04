@@ -49,7 +49,7 @@ namespace ROCKSDB_NAMESPACE
     public:
         static S2FileSystem *_fs;
         S2FSObject(){}
-        ~S2FSObject(){}
+        virtual ~S2FSObject(){}
 
         virtual inline int ReadLock() { return pthread_rwlock_rdlock(&_rwlock); }
         virtual inline int WriteLock() { return pthread_rwlock_wrlock(&_rwlock); }
