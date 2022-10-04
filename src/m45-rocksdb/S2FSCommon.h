@@ -187,6 +187,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock *DirectoryLookUp(std::string &name);
         int DataAppend(const char *data, uint64_t len);
         int DirectoryAppend(S2FSFileAttr& fa);
+        int Read(char *buf, uint64_t n, uint64_t offset, uint64_t buf_offset);
         void RenameChild(const std::string &src, const std::string &target);
 
         static uint64_t Size();
@@ -230,7 +231,6 @@ namespace ROCKSDB_NAMESPACE
         // Equivalent to delete
         int Free(uint64_t inode_id);
         int RemoveINode(uint64_t inode_id);
-        int Read();
         int Write();
         int Flush();
         int Offload();

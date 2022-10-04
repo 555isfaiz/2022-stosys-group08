@@ -280,9 +280,38 @@ start:
                                                std::unique_ptr<FSRandomAccessFile> *result, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (_FileExists(fname, false, &inode).IsNotFound())
-            return IOStatus::NotFound();
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSSegment *s;
+        S2FSBlock *new_inode;
+        bool exist = false;
+        auto ret = _FileExists(fname, false, &inode);
+        if (ret.IsNotFound())
+        {
+            while (s = FindNonFullSegment())
+            {
+                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
+                {
+                    exist = true;
+                    break;
+                }
+            }
+        }
+        else if (ret.ok())
+        {
+            new_inode = inode;
+            exist = true;
+        }
+        else
+            return IOStatus::IOError(__FUNCTION__);
+
+        if (exist)
+        {
+            result->reset(new S2FSRandomAccessFile(new_inode));
+            return IOStatus::OK();
+        }
+        else
+        {
+            return IOStatus::IOError(__FUNCTION__);
+        }
     }
 
     const char *S2FileSystem::Name() const

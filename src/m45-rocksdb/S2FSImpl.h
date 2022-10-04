@@ -111,7 +111,7 @@ namespace ROCKSDB_NAMESPACE
 
         virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions& options,
                         Slice* result, char* scratch,
-                        IODebugContext* dbg) const = 0;
+                        IODebugContext* dbg) const;
     };
 }
 
