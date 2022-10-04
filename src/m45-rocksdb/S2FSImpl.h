@@ -103,15 +103,36 @@ namespace ROCKSDB_NAMESPACE
     {
     private:
         S2FSBlock *_inode;
+
     public:
         S2FSRandomAccessFile(S2FSBlock *inode)
-        : _inode(inode)
-        {}
+            : _inode(inode)
+        {
+        }
         ~S2FSRandomAccessFile() {}
 
-        virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions& options,
-                        Slice* result, char* scratch,
-                        IODebugContext* dbg) const = 0;
+        virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions &options,
+                              Slice *result, char *scratch,
+                              IODebugContext *dbg) const = 0;
+    };
+
+    class S2FSSequentialFile : public FSSequentialFile
+    {
+    private:
+        S2FSBlock *_inode;
+
+    public:
+        S2FSSequentialFile(S2FSBlock *inode)
+            : _inode(inode)
+        {
+        }
+        ~S2FSSequentialFile() {}
+
+        virtual IOStatus Read(size_t n, const IOOptions &options,
+                              Slice *result, char *scratch,
+                              IODebugContext *dbg) const = 0;
+
+        virtual IOStatus Skip(uint64_t n) const = 0;
     };
 }
 
