@@ -135,7 +135,7 @@ namespace ROCKSDB_NAMESPACE
         virtual IOStatus Skip(uint64_t n);
         // Not make any sense to have the addoffset function
         // Still need modify
-        void AddOffset(uint64_t n)
+        void OffsetSkip(uint64_t n)
         {
             _offset += n;
         }
