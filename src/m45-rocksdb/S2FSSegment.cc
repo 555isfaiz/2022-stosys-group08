@@ -273,6 +273,20 @@ namespace ROCKSDB_NAMESPACE
         return 0;
     }
 
+    int S2FSSegment::Offload()
+    {
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        {
+            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+                continue;
+            
+            int ret = _blocks.at(i)->Offload();
+            if (ret)
+                return ret;
+        }
+        return 0;
+    }
+
     void S2FSSegment::Preload(char *buffer)
     {
         for (uint32_t c = 0; c < _reserve_for_inode * S2FSBlock::Size(); c += INODE_MAP_ENTRY_LENGTH)

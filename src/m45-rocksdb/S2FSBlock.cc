@@ -461,6 +461,43 @@ namespace ROCKSDB_NAMESPACE
         return 0;
     }
 
+    int S2FSBlock::Offload()
+    {
+        if (!_loaded)
+            return 0;
+
+        Flush();
+        _loaded = false;
+
+        switch (_type)
+        {
+        case ITYPE_DIR_DATA:
+        {
+            for (size_t size = _file_attrs.size(); size > 0; size--)
+            {
+                free(_file_attrs.front());
+                _file_attrs.pop_front();
+            }
+            break;
+        }
+
+        case ITYPE_DIR_INODE:
+        case ITYPE_FILE_INODE:
+            _offsets.clear();
+            break;
+
+        case ITYPE_FILE_DATA:
+            free(_content);
+            _content = 0; _content_size = 0;
+            break;
+
+        default:
+            break;
+        }
+        
+        return 0;
+    }
+
     uint64_t S2FSBlock::MaxDataSize(INodeType type)
     {
         if (type == ITYPE_DIR_INODE)

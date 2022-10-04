@@ -191,6 +191,8 @@ namespace ROCKSDB_NAMESPACE
         void RenameChild(const std::string &src, const std::string &target);
         // No locking inside
         int Flush();
+        // No locking inside
+        int Offload();
 
         static uint64_t Size();
         static uint64_t MaxDataSize(INodeType type);
@@ -237,7 +239,9 @@ namespace ROCKSDB_NAMESPACE
 
         // No locking inside
         int Flush();
+        // No locking inside
         int Offload();
+        // No locking inside
         int OnGC();
 
         inline uint64_t Addr() { return _addr_start; }
