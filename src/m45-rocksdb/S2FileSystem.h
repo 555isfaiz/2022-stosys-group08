@@ -155,6 +155,11 @@ namespace ROCKSDB_NAMESPACE {
         std::unordered_map<uint64_t, S2FSSegment*> _cache;
         uint64_t _wp_end;
 
+        std::string get_seq_id();
+        std::atomic<int> _seq_id{};
+        std::string _name;
+        std::stringstream _ss;
+
         // Set res to the target file inode or its parent dir inode, depending on the set_parent flag
         IOStatus _FileExists(const std::string &fname, bool set_parent, S2FSBlock **res);
     };
