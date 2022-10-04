@@ -377,7 +377,7 @@ namespace ROCKSDB_NAMESPACE
     {
         WriteLock();
         LivenessCheck();
-        uint64_t cur_off = 0, read_num = 0, buf_off = buf_offset;
+        uint64_t cur_off = 0, read_num = 0, buf_off = buf_offset, total_read = 0;
         for (auto off : _offsets)
         {
             auto s = _fs->ReadSegment(addr_2_segment(off));
@@ -391,6 +391,7 @@ namespace ROCKSDB_NAMESPACE
                 memcpy(buf + buf_off, data_block->Content() + in_block_off, to_read);
                 buf_off += to_read;
                 read_num += to_read;
+                total_read += to_read;
             }
             cur_off += S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
         }
@@ -401,11 +402,11 @@ namespace ROCKSDB_NAMESPACE
             s->WriteLock();
             auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
             s->Unlock();
-            in->Read(buf, n - read_num, offset - cur_off, buf_off);
+            total_read += in->Read(buf, n - read_num, offset - cur_off, buf_off);
         }
 
         Unlock();
-        return 0;
+        return total_read;
     }
 
     void S2FSBlock::RenameChild(const std::string &src, const std::string &target)

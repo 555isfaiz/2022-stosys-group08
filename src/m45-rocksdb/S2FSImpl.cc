@@ -44,13 +44,14 @@ namespace ROCKSDB_NAMESPACE
                                         Slice *result, char *scratch,
                                         IODebugContext *dbg) const
     {
-        if (_inode->Read(scratch, n, offset, 0))
+        auto read_num = _inode->Read(scratch, n, offset, 0);
+        if (!read_num)
         {
             *result = Slice(scratch, 0);
             return IOStatus::IOError();
         }
 
-        *result = Slice(scratch, n);
+        *result = Slice(scratch, read_num);
         return IOStatus::OK();
     }
 
