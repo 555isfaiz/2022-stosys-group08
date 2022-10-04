@@ -130,15 +130,14 @@ namespace ROCKSDB_NAMESPACE
         _type(type),
         _next(0),
         _prev(0),
-        _content(0),
         _content_size(0),
         _segment_addr(segmeng_addr),
         _loaded(true)
         {
             if (type == ITYPE_FILE_DATA)
-            {
                 _content = (char *)calloc(S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), sizeof(char));
-            }
+            else
+                _content = 0;
         }
 
         // Should followed by Deserialize()
@@ -174,6 +173,10 @@ namespace ROCKSDB_NAMESPACE
         }
         inline char* Content()                                  { return _content; }
         inline uint64_t ContentSize()                           { return _content_size; }
+        inline void AddContentSize(uint64_t to_add)             
+        { 
+            _content_size += to_add; 
+        }
         inline void SegmentAddr(uint64_t addr)                  { _segment_addr = addr; }
         inline uint64_t SegmentAddr()                           { return _segment_addr; }
         inline void Loaded(bool loaded)                         { _loaded = loaded; }
@@ -235,6 +238,7 @@ namespace ROCKSDB_NAMESPACE
         // Equivalent to delete
         int Free(uint64_t inode_id);
         int RemoveINode(uint64_t inode_id);
+        void OnRename(const std::string &src, const std::string &target);
         // int Write();
 
         // No locking inside

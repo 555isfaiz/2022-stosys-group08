@@ -260,38 +260,12 @@ namespace ROCKSDB_NAMESPACE
                                              std::unique_ptr<FSSequentialFile> *result, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        S2FSSegment *s;
-        S2FSBlock *new_inode;
-        bool exist = false;
-        auto ret = _FileExists(fname, false, &inode);
-        if (ret.IsNotFound())
-        {
-            while (s = FindNonFullSegment())
-            {
-                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
-                {
-                    exist = true;
-                    break;
-                }
-            }
-        }
-        else if (ret.ok())
-        {
-            new_inode = inode;
-            exist = true;
-        }
-        else
-            return IOStatus::IOError(__FUNCTION__);
+        auto r = _FileExists(fname, false, &inode);
+        if (!r.ok())
+            return r;
 
-        if (exist)
-        {
-            result->reset(new S2FSSequentialFile(new_inode));
-            return IOStatus::OK();
-        }
-        else
-        {
-            return IOStatus::IOError(__FUNCTION__);
-        }
+        result->reset(new S2FSSequentialFile(inode));
+        return IOStatus::OK();
     }
 
     IOStatus S2FileSystem::IsDirectory(const std::string &, const IOOptions &options, bool *is_dir, IODebugContext *)
@@ -311,38 +285,12 @@ namespace ROCKSDB_NAMESPACE
                                                std::unique_ptr<FSRandomAccessFile> *result, IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        S2FSSegment *s;
-        S2FSBlock *new_inode;
-        bool exist = false;
-        auto ret = _FileExists(fname, false, &inode);
-        if (ret.IsNotFound())
-        {
-            while (s = FindNonFullSegment())
-            {
-                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
-                {
-                    exist = true;
-                    break;
-                }
-            }
-        }
-        else if (ret.ok())
-        {
-            new_inode = inode;
-            exist = true;
-        }
-        else
-            return IOStatus::IOError(__FUNCTION__);
+        auto r = _FileExists(fname, false, &inode);
+        if (!r.ok())
+            return r;
 
-        if (exist)
-        {
-            result->reset(new S2FSRandomAccessFile(new_inode));
-            return IOStatus::OK();
-        }
-        else
-        {
-            return IOStatus::IOError(__FUNCTION__);
-        }
+        result->reset(new S2FSRandomAccessFile(inode));
+        return IOStatus::OK();
     }
 
     const char *S2FileSystem::Name() const
@@ -420,8 +368,9 @@ namespace ROCKSDB_NAMESPACE
                                IODebugContext *dbg)
     {
         S2FSBlock *inode;
-        if (!_FileExists(name, false, &inode).ok())
-            return IOStatus::IOError(__FUNCTION__);
+        auto r = _FileExists(name, false, &inode);
+        if (!r.ok())
+            return r;
 
         result->reset(new S2FSDirectory(inode));
         return IOStatus::OK();
@@ -637,7 +586,7 @@ namespace ROCKSDB_NAMESPACE
         if (_FileExists(src, true, &inode).IsNotFound())
             return IOStatus::NotFound();
 
-        inode->RenameChild(src, target);
+        inode->RenameChild(strip_name(src, _fs_delimiter), strip_name(target, _fs_delimiter));
         return IOStatus::OK();
     }
 

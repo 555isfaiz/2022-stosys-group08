@@ -256,7 +256,6 @@ namespace ROCKSDB_NAMESPACE
             do
             {
                 int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate - allocated, &data_block);
-                allocated += tmp;
                 // this segment is full, allocate new in next segment
                 if (tmp < 0)
                 {
@@ -277,6 +276,10 @@ namespace ROCKSDB_NAMESPACE
                     res->WriteLock();
                     inodes.push_back(res);
                     inode = res;
+                    allocated += tmp;
+                }
+                else
+                {
                     allocated += tmp;
                 }
 
@@ -316,14 +319,16 @@ namespace ROCKSDB_NAMESPACE
             inodes.push_back(inode);
         }
 
+        segment->WriteLock();
         auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
+        segment->Unlock();
+
         if (data_block->ContentSize() + len > S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
         {
             uint64_t allocated = 0;
             do
             {
                 int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + allocated, len - allocated, &data_block);
-                allocated += tmp;
                 // this segment is full, allocate new in next segment
                 if (tmp < 0)
                 {
@@ -346,12 +351,17 @@ namespace ROCKSDB_NAMESPACE
                     inode = res;
                     allocated += tmp;
                 }
+                else
+                {
+                    allocated += tmp;
+                }
 
             } while (allocated < len);
         }
         else
         {
             memcpy(data_block->Content() + data_block->ContentSize(), data, len);
+            data_block->AddContentSize(len);
             Flush();
         }
 
@@ -422,6 +432,7 @@ namespace ROCKSDB_NAMESPACE
                 if (attr->Name() == src)
                 {
                     attr->Name(target);
+                    s->OnRename(src, target);
                     s->Unlock();
                     data->Flush();
                     data->Unlock();

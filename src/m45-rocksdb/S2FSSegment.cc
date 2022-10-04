@@ -147,6 +147,7 @@ namespace ROCKSDB_NAMESPACE
                     if (data)
                     {
                         memcpy(data_block->Content(), data + allocated, to_copy);
+                        data_block->AddContentSize(to_copy);
                     }
                     allocated += to_copy;
                     empty = GetEmptyBlock();
@@ -186,6 +187,7 @@ namespace ROCKSDB_NAMESPACE
             if (data)
             {
                 memcpy(data_block->Content(), data + allocated, to_copy);
+                data_block->AddContentSize(to_copy);
             }
             allocated += to_copy;
             empty = GetEmptyBlock();
@@ -208,6 +210,16 @@ namespace ROCKSDB_NAMESPACE
             }
         }
         return 0;
+    }
+
+    void S2FSSegment::OnRename(const std::string &src, const std::string &target)
+    {
+        if (!map_contains(_name_2_inode, src))
+            return;
+
+        auto id = _name_2_inode.at(src);
+        _name_2_inode.erase(src);
+        _name_2_inode[target] = id;
     }
 
     int S2FSSegment::Free(uint64_t inode_id) 
