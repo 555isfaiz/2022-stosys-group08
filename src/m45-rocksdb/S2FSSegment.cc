@@ -154,7 +154,7 @@ namespace ROCKSDB_NAMESPACE
             }
         }
         
-        // Flush();
+        Flush();
 
         Unlock();
 
@@ -191,6 +191,7 @@ namespace ROCKSDB_NAMESPACE
             empty = GetEmptyBlock();
         }
 
+        Flush();
         Unlock();
         return allocated;
     }
@@ -238,6 +239,7 @@ namespace ROCKSDB_NAMESPACE
             inode = inodes.back();
             segment = segments.back();
             segment->RemoveINode(inode->ID());
+            segment->Flush();
             segment->Unlock();
             inode->Unlock();
             delete inode;
@@ -245,6 +247,28 @@ namespace ROCKSDB_NAMESPACE
             segments.pop_back();
         }
 
+        return 0;
+    }
+
+    int S2FSSegment::Flush()
+    {
+        char buf[S2FSBlock::Size()] = {0};
+        uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
+        for (auto iter = _inode_map.begin(); iter != _inode_map.end() && off < size; off += INODE_MAP_ENTRY_LENGTH, iter++)
+        {
+            *(uint64_t *)(buf + off) = iter->first;
+            *(uint64_t *)(buf + off + 8) = iter->second;
+        }
+
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        {
+            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+                continue;
+            
+            int ret = _blocks.at(i)->Flush();
+            if (ret)
+                return ret;
+        }
         return 0;
     }
 
@@ -273,6 +297,8 @@ namespace ROCKSDB_NAMESPACE
 
         for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
+            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+                continue;
             _blocks.at(i)->Serialize(buffer + i * S2FSBlock::Size());
         }
         Unlock();

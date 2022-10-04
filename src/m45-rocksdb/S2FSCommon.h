@@ -133,7 +133,7 @@ namespace ROCKSDB_NAMESPACE
         _content(0),
         _content_size(0),
         _segment_addr(segmeng_addr),
-        _loaded(false)
+        _loaded(true)
         {
             if (type == ITYPE_FILE_DATA)
             {
@@ -189,6 +189,8 @@ namespace ROCKSDB_NAMESPACE
         int DirectoryAppend(S2FSFileAttr& fa);
         int Read(char *buf, uint64_t n, uint64_t offset, uint64_t buf_offset);
         void RenameChild(const std::string &src, const std::string &target);
+        // No locking inside
+        int Flush();
 
         static uint64_t Size();
         static uint64_t MaxDataSize(INodeType type);
@@ -231,7 +233,9 @@ namespace ROCKSDB_NAMESPACE
         // Equivalent to delete
         int Free(uint64_t inode_id);
         int RemoveINode(uint64_t inode_id);
-        int Write();
+        // int Write();
+
+        // No locking inside
         int Flush();
         int Offload();
         int OnGC();
