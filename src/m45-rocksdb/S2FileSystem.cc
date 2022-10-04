@@ -132,7 +132,7 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSSegment *S2FileSystem::FindNonFullSegment()
     {
-start:
+    start:
         S2FSSegment *seg = ReadSegment(_wp_end);
         seg->ReadLock();
         if (seg->GetEmptyBlockNum() >= 2)
@@ -160,7 +160,8 @@ start:
             seg->Unlock();
         }
 
-        std::cout << "Disk full" << "\n";
+        std::cout << "Disk full"
+                  << "\n";
         return NULL;
     }
 
@@ -336,7 +337,7 @@ start:
         {
             s = ReadSegment(inode->SegmentAddr());
             s->Free(inode->ID());
-            _FileExists(fname, false, &inode);     // set inode to the parent dir
+            _FileExists(fname, false, &inode); // set inode to the parent dir
         }
 
         bool allocated = false;
@@ -412,7 +413,7 @@ start:
     {
         S2FSBlock *inode;
         if (_FileExists(dirname, false, &inode).ok())
-            return IOStatus::IOError(__FUNCTION__);        
+            return IOStatus::IOError(__FUNCTION__);
 
         auto to_create = dirname.substr(inode->Name().length(), dirname.length() - inode->Name().length());
         while (!to_create.empty())
@@ -495,7 +496,16 @@ start:
     // Needed
     IOStatus S2FileSystem::DeleteFile(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSBlock *inode;
+        S2FSSegment *s;
+        if (!_FileExists(fname, false, &inode).ok())
+        {
+            return IOStatus::NotFound(__FUNCTION__);
+        }
+
+        s = ReadSegment(inode->SegmentAddr());
+        s->Free(inode->ID());
+        return IOStatus::OK();
     }
 
     // Needed
@@ -515,7 +525,7 @@ start:
     // REQUIRES: lock has not already been unlocked.
     IOStatus S2FileSystem::UnlockFile(FileLock *lock, const IOOptions &options, IODebugContext *dbg)
     {
-        S2FSFileLock *fl = dynamic_cast<S2FSFileLock*>(lock);
+        S2FSFileLock *fl = dynamic_cast<S2FSFileLock *>(lock);
         if (fl->Unlock())
         {
             return IOStatus::IOError(__FUNCTION__);
