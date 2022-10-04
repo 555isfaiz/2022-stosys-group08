@@ -49,8 +49,28 @@ namespace ROCKSDB_NAMESPACE
             *result = Slice(scratch, 0);
             return IOStatus::IOError();
         }
-        
+
         *result = Slice(scratch, n);
+        return IOStatus::OK();
+    }
+
+    IOStatus S2FSSequentialFile::Read(size_t n, const IOOptions &options,
+                                      Slice *result, char *scratch,
+                                      IODebugContext *dbg) const
+    {
+        if (_inode->Read(scratch, n, _offset, 0))
+        {
+            *result = Slice(scratch, 0);
+            return IOStatus::IOError();
+        }
+
+        *result = Slice(scratch, n);
+        return IOStatus::OK();
+    }
+
+    IOStatus S2FSSequentialFile::Skip(uint64_t n) const
+    {
+        _inode->AddOffset(n);
         return IOStatus::OK();
     }
 }

@@ -119,7 +119,8 @@ namespace ROCKSDB_NAMESPACE
     {
     private:
         S2FSBlock *_inode;
-
+        int64_t _offset = 0;
+        // TODO: lock for offset
     public:
         S2FSSequentialFile(S2FSBlock *inode)
             : _inode(inode)
@@ -132,6 +133,12 @@ namespace ROCKSDB_NAMESPACE
                               IODebugContext *dbg) const;
 
         virtual IOStatus Skip(uint64_t n) const;
+        // Not make any sense to have the addoffset function
+        // Still need modify
+        void AddOffset(uint64_t n)
+        {
+            _offset += n;
+        }
     };
 }
 
