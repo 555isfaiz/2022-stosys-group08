@@ -36,19 +36,21 @@ SOFTWARE.
 #include <vector>
 #include <list>
 
-namespace ROCKSDB_NAMESPACE {
+namespace ROCKSDB_NAMESPACE
+{
 
-    #define CACHE_SEG_THRESHOLD 4
+#define CACHE_SEG_THRESHOLD 4
 
     class S2FSObject;
     class S2FSBlock;
     class S2FSSegment;
 
-    class S2FileSystem : public FileSystem {
+    class S2FileSystem : public FileSystem
+    {
     public:
         // No copying allowed
         S2FileSystem(std::string uri, bool debug);
-        S2FileSystem(const S2FileSystem&) = delete;
+        S2FileSystem(const S2FileSystem &) = delete;
         virtual ~S2FileSystem();
 
         IOStatus IsDirectory(const std::string &, const IOOptions &options, bool *is_dir, IODebugContext *) override;
@@ -102,9 +104,9 @@ namespace ROCKSDB_NAMESPACE {
         GetAbsolutePath(const std::string &db_path, const IOOptions &options, std::string *output_path,
                         IODebugContext *dbg);
 
-        IOStatus DeleteFile(const std::string& fname,
-                            const IOOptions& options,
-                            IODebugContext* dbg);
+        IOStatus DeleteFile(const std::string &fname,
+                            const IOOptions &options,
+                            IODebugContext *dbg);
 
         IOStatus
         NewLogger(const std::string &fname, const IOOptions &io_opts, std::shared_ptr<Logger> *result,
@@ -139,7 +141,7 @@ namespace ROCKSDB_NAMESPACE {
                                    std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg);
 
         struct user_zns_device *_zns_dev;
-        struct zns_device_extra_info * _zns_dev_ex;
+        struct zns_device_extra_info *_zns_dev_ex;
 
         S2FSSegment *ReadSegment(uint64_t from);
         S2FSSegment *FindNonFullSegment();
@@ -152,7 +154,7 @@ namespace ROCKSDB_NAMESPACE {
     private:
         std::string _uri;
         const std::string _fs_delimiter = "/";
-        std::unordered_map<uint64_t, S2FSSegment*> _cache;
+        std::unordered_map<uint64_t, S2FSSegment *> _cache;
         uint64_t _wp_end;
 
         std::string get_seq_id();
@@ -165,4 +167,4 @@ namespace ROCKSDB_NAMESPACE {
     };
 }
 
-#endif //STOSYS_PROJECT_S2FILESYSTEM_H
+#endif // STOSYS_PROJECT_S2FILESYSTEM_H

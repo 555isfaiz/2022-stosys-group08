@@ -38,8 +38,8 @@ namespace ROCKSDB_NAMESPACE
 
         this->_seq_id = 0;
         this->_name = "S2FileSystem forward to ";
-        //Do not know the meaning of Filesystem default
-        //this->_name = this->_name.append(FileSystem::Default()->Name());
+        // Do not know the meaning of Filesystem default
+        // this->_name = this->_name.append(FileSystem::Default()->Name());
         this->_ss.str("");
         this->_ss.clear();
 
@@ -103,14 +103,13 @@ namespace ROCKSDB_NAMESPACE
     {
     }
 
-    std::string S2FileSystem::get_seq_id() 
+    std::string S2FileSystem::get_seq_id()
     {
         this->_ss.str("");
         this->_ss.clear();
         this->_ss << " call_seq: " << this->_seq_id++ << " tid: " << std::hash<std::thread::id>{}(std::this_thread::get_id()) << " ";
         return this->_ss.str();
     }
-
 
     S2FSSegment *S2FileSystem::ReadSegment(uint64_t from)
     {
@@ -121,7 +120,7 @@ namespace ROCKSDB_NAMESPACE
                 return s.second;
             }
         }
-        
+
         return NULL;
     }
 
