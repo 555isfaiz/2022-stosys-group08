@@ -24,6 +24,7 @@ SOFTWARE.
 #include <string>
 #include <iostream>
 #include <sys/mman.h>
+#include <unistd.h>
 
 #include <stosys_debug.h>
 #include <utils.h>
@@ -474,7 +475,21 @@ start:
     IOStatus S2FileSystem::GetAbsolutePath(const std::string &db_path, const IOOptions &options, std::string *output_path,
                                            IODebugContext *dbg)
     {
-        return IOStatus::IOError(__FUNCTION__);
+        if (!db_path.empty() && db_path[0] == '/')
+        {
+            *output_path = db_path;
+            return IOStatus::OK();
+        }
+
+        char the_path[4096];
+        char *ret = getcwd(the_path, 4096);
+        if (ret == nullptr)
+        {
+            return IOStatus::IOError(__FUNCTION__);
+        }
+
+        *output_path = ret;
+        return IOStatus::OK();
     }
 
     // Needed
