@@ -45,11 +45,6 @@ namespace ROCKSDB_NAMESPACE
                                         IODebugContext *dbg) const
     {
         auto read_num = _inode->Read(scratch, n, offset, 0);
-        if (!read_num)
-        {
-            *result = Slice(scratch, 0);
-            return IOStatus::OK();
-        }
 
         *result = Slice(scratch, read_num);
         return IOStatus::OK();
@@ -61,12 +56,6 @@ namespace ROCKSDB_NAMESPACE
     {
         auto read_num = _inode->Read(scratch, n, _offset, 0);
         
-        if (!read_num)
-        {
-            *result = Slice(scratch, 0);
-            return IOStatus::OK();
-        }
-
         Skip(read_num);
 
         *result = Slice(scratch, read_num);
