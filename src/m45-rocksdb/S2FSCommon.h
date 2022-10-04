@@ -49,7 +49,7 @@ namespace ROCKSDB_NAMESPACE
     public:
         static S2FileSystem *_fs;
         S2FSObject(){}
-        ~S2FSObject(){}
+        virtual ~S2FSObject(){}
 
         virtual inline int ReadLock() { return pthread_rwlock_rdlock(&_rwlock); }
         virtual inline int WriteLock() { return pthread_rwlock_wrlock(&_rwlock); }
@@ -191,6 +191,8 @@ namespace ROCKSDB_NAMESPACE
         void RenameChild(const std::string &src, const std::string &target);
         // No locking inside
         int Flush();
+        // No locking inside
+        int Offload();
 
         static uint64_t Size();
         static uint64_t MaxDataSize(INodeType type);
@@ -237,6 +239,7 @@ namespace ROCKSDB_NAMESPACE
 
         // No locking inside
         int Flush();
+        // No locking inside
         int Offload();
         int OnGC();
 

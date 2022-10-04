@@ -19,8 +19,8 @@ namespace ROCKSDB_NAMESPACE
     {
         uint64_t ptr = MAX_NAME_LENGTH;
         Name(std::string(buffer, MAX_NAME_LENGTH))
-        ->IsDir(*(uint64_t *)(buffer + ptr) & (1 << 63))
-        ->Size(*(uint64_t *)(buffer + ptr) | (1 << 63))
+        ->IsDir(*(uint64_t *)(buffer + ptr) & ((uint64_t)1 << 63))
+        ->Size(*(uint64_t *)(buffer + ptr) | ((uint64_t)1 << 63))
         ->CreateTime(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
         ->Offset(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
         ->InodeID(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))));

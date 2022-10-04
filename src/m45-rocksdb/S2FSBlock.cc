@@ -255,7 +255,7 @@ namespace ROCKSDB_NAMESPACE
             uint64_t allocated = 0, to_allocate = S2FSBlock::MaxDataSize(ITYPE_DIR_INODE);
             do
             {
-                uint64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate - allocated, &data_block);
+                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate - allocated, &data_block);
                 allocated += tmp;
                 // this segment is full, allocate new in next segment
                 if (tmp < 0)
@@ -322,7 +322,7 @@ namespace ROCKSDB_NAMESPACE
             uint64_t allocated = 0;
             do
             {
-                uint64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + allocated, len - allocated, &data_block);
+                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + allocated, len - allocated, &data_block);
                 allocated += tmp;
                 // this segment is full, allocate new in next segment
                 if (tmp < 0)
@@ -458,6 +458,45 @@ namespace ROCKSDB_NAMESPACE
                       << "\n";
             return -1;
         }
+        return 0;
+    }
+
+    int S2FSBlock::Offload()
+    {
+        if (!_loaded)
+            return 0;
+
+        int ret = Flush();
+        if (ret)
+            return ret;
+
+        _loaded = false;
+        switch (_type)
+        {
+        case ITYPE_DIR_DATA:
+        {
+            for (size_t size = _file_attrs.size(); size > 0; size--)
+            {
+                free(_file_attrs.front());
+                _file_attrs.pop_front();
+            }
+            break;
+        }
+
+        case ITYPE_DIR_INODE:
+        case ITYPE_FILE_INODE:
+            _offsets.clear();
+            break;
+
+        case ITYPE_FILE_DATA:
+            free(_content);
+            _content = 0; _content_size = 0;
+            break;
+
+        default:
+            break;
+        }
+
         return 0;
     }
 
