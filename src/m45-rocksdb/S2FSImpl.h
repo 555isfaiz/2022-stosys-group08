@@ -119,7 +119,8 @@ namespace ROCKSDB_NAMESPACE
     {
     private:
         S2FSBlock *_inode;
-        int64_t _offset = 0;
+        int64_t _offset_pointer = 0;
+        int64_t _eof = 0;
         // TODO: lock for offset
     public:
         S2FSSequentialFile(S2FSBlock *inode)
@@ -137,7 +138,7 @@ namespace ROCKSDB_NAMESPACE
         // Still need modify
         void OffsetSkip(uint64_t n)
         {
-            _offset += n;
+            _offset_pointer += n;
         }
     };
 }
