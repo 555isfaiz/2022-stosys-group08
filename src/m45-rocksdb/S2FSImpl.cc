@@ -70,7 +70,7 @@ namespace ROCKSDB_NAMESPACE
 
     IOStatus S2FSSequentialFile::Skip(uint64_t n)
     {
-        _inode->AddOffset(n);
+        OffsetSkip(n);
         return IOStatus::OK();
     }
 }
