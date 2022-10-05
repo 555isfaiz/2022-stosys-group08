@@ -333,6 +333,7 @@ namespace ROCKSDB_NAMESPACE
                 changed = true;
             
             uint64_t new_inseg_off = block_2_inseg_offset(ptr);
+            ptr++;
             if (map_contains(_inode_map, block->ID()))
             {
                 _inode_map[block->ID()] = new_inseg_off;
@@ -342,10 +343,50 @@ namespace ROCKSDB_NAMESPACE
             // Update _prev and _next for dir/file inodes if needed...
             if (block->Type() == ITYPE_DIR_INODE || block->Type() == ITYPE_FILE_INODE)
             {
-                // if ()
+                if (block->Next())
+                {
+                    auto s = _fs->ReadSegment(addr_2_segment(block->Next()));
+                    s->WriteLock();
+                    auto next_block = s->GetBlockByOffset(addr_2_inseg_offset(block->Next()));
+                    next_block->WriteLock();
+                    next_block->Prev(_addr_start + new_inseg_off);
+                    next_block->Unlock();
+                    s->Unlock();
+                }
+
+                if (block->Prev())
+                {
+                    auto s = _fs->ReadSegment(addr_2_segment(block->Next()));
+                    s->WriteLock();
+                    auto prev_block = s->GetBlockByOffset(addr_2_inseg_offset(block->Prev()));
+                    prev_block->WriteLock();
+                    prev_block->Next(_addr_start + new_inseg_off);
+                    prev_block->Unlock();
+                    s->Unlock();
+                }
             }
 
             // change inode->_offsets if needed...
+            uint64_t old_off = _addr_start + block_2_inseg_offset(i);
+            for (auto b : _blocks)
+            {
+                if (b == block)
+                    continue;
+                
+                b->WriteLock();
+                auto offsets = b->Offsets();
+                for (size_t ii = 0; ii < offsets.size(); ii++)
+                {
+                    if (offsets[ii] = old_off)
+                    {
+                        offsets[ii] = _addr_start + new_inseg_off;
+                        b->Unlock();
+                        goto done;
+                    }
+                }
+                b->Unlock();
+            }
+done:
             block->Unlock();
         }
 

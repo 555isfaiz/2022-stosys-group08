@@ -106,7 +106,7 @@ namespace ROCKSDB_NAMESPACE
         INodeType _type;
         // Only valid for ITYPE_INODE types.
         // Global offsets of data blocks
-        std::list<uint64_t> _offsets;
+        std::vector<uint64_t> _offsets;
         // Only valid for ITYPE_DIR_DATA type.
         std::list<S2FSFileAttr*> _file_attrs;
         // Only valid for ITYPE_FILE_DATA type.
@@ -158,7 +158,7 @@ namespace ROCKSDB_NAMESPACE
         inline uint64_t ID()                                    { return _id; }
         inline const std::string& Name()                        { return _name; }
         inline S2FSBlock* Name(const std::string& name)         { _name = name; return this; }
-        inline const std::list<uint64_t>& Offsets()             { return _offsets; }
+        inline const std::vector<uint64_t>& Offsets()             { return _offsets; }
         inline const std::list<S2FSFileAttr*>& FileAttrs()      { return _file_attrs; }
         inline void AddFileAttr(S2FSFileAttr &fa)               
         {
