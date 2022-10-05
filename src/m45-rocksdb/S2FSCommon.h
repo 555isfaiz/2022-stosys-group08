@@ -142,7 +142,7 @@ namespace ROCKSDB_NAMESPACE
 
         // Should followed by Deserialize()
         S2FSBlock(){}
-        ~S2FSBlock(){}
+        ~S2FSBlock();
 
         void Serialize(char *buffer);
         void Deserialize(char *buffer);
@@ -215,7 +215,7 @@ namespace ROCKSDB_NAMESPACE
         uint32_t _reserve_for_inode;
     public:
         S2FSSegment(uint64_t addr);
-        ~S2FSSegment(){}
+        ~S2FSSegment();
 
         void Preload(char *buffer);
         void Serialize(char *buffer);

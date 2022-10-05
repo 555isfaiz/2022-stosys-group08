@@ -5,6 +5,31 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::Size() { return _fs->_zns_dev->lba_size_bytes; }
 
+    S2FSBlock::~S2FSBlock()
+    {
+        switch (_type)
+        {
+        case 2:
+        {
+            free(_content);
+            _content = 0; _content_size = 0;
+            break;
+        }
+        case 8:
+        {
+            while (!_file_attrs.empty())
+            {
+                delete _file_attrs.front();
+                _file_attrs.pop_front();
+            }
+            break;
+        }
+
+        default:
+            break;
+        }
+    }
+
     void S2FSBlock::SerializeFileInode(char *buffer)
     {
         *buffer = _type << 4;

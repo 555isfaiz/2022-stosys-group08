@@ -12,6 +12,16 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSSegment::Size() { return _fs->_zns_dev->lba_size_bytes * _fs->_zns_dev_ex->blocks_per_zone; }
 
+    S2FSSegment::~S2FSSegment()
+    {
+        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        {
+            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+                continue;
+            delete _blocks.at(i);
+        }
+    }
+
     uint64_t S2FSSegment::GetEmptyBlock()
     {
         // skip the first one. that's for inode map
@@ -341,6 +351,7 @@ namespace ROCKSDB_NAMESPACE
             Flush();
         }
 
+        Offload();
         Unlock();
         return 0;
     }

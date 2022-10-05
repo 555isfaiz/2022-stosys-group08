@@ -61,6 +61,7 @@ namespace ROCKSDB_NAMESPACE
             std::cout << "Error: " << uri_db_path << " failed to open the device " << device.c_str() << "\n";
             std::cout << "Error: ret " << ret << "\n";
         }
+        free(params.name);
         this->_zns_dev_ex = (struct zns_device_extra_info *)this->_zns_dev->_private;
         assert(ret == 0);
         assert(this->_zns_dev->lba_size_bytes != 0);
@@ -101,6 +102,11 @@ namespace ROCKSDB_NAMESPACE
 
     S2FileSystem::~S2FileSystem()
     {
+        for (auto p : _cache)
+        {
+            delete p.second;
+        }
+        deinit_ss_zns_device(_zns_dev);
     }
 
     std::string S2FileSystem::get_seq_id()
@@ -543,6 +549,7 @@ namespace ROCKSDB_NAMESPACE
         }
         else
         {
+            delete fl;
             return IOStatus::OK();
         }
     }
