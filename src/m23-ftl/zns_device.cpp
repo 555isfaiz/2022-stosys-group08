@@ -70,97 +70,21 @@ extern "C"
         return ret;
     }
 
-    // // from nvme-cli nvme.c
-    // void *mmap_registers(const char *devicename)
-    // {
-    //     nvme_root_t r;
-    //     r = nvme_scan(NULL);
-    //     if (!r)
-    //     {
-    //         printf("nvme_scan call failed with errno %d , null pointer returned in the scan call\n", -errno);
-    //         return NULL;
-    //     }
+    int metadata_write(){
 
-    //     nvme_host_t h;
-    //     nvme_subsystem_t subsystem;
-    //     nvme_ctrl_t controller;
-    //     nvme_ns_t nspace;
+    }
 
-    //     char path[512];
-    //     void *membase;
-    //     int fd;
+    int metadata_read(){
+        
+    }
 
-    //     nspace = nvme_scan_namespace(devicename);
-    //     nvme_for_each_host(r, h)
-    //     {
-    //         nvme_for_each_subsystem(h, subsystem)
-    //         {
-    //             nvme_subsystem_for_each_ctrl(subsystem, controller)
-    //             {
-    //                 nvme_ctrl_for_each_ns(controller, nspace)
-    //                 {
-    //                     if (strcmp(nvme_ns_get_name(nspace), devicename) == 0)
-    //                     {
-    //                         snprintf(path, sizeof(path), "%s/device/device/resource0", nvme_ns_get_sysfs_dir(nspace));
-    //                         goto loop_end;
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
+    int init_descriptor(){
+        return 0;
+    }
 
-
-    // loop_end:
-    //     nvme_free_tree(r);
-    //     fd = open(path, O_RDONLY);
-    //     if (fd < 0)
-    //     {
-    //         perror("can't open pci resource ");
-    //         return NULL;
-    //     }
-
-    //     membase = mmap(NULL, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
-    //     if (membase == MAP_FAILED)
-    //     {
-    //         perror("can't do mmap for device ");
-    //         membase = NULL;
-    //     }
-
-    //     close(fd);
-    //     return membase;
-    // }
-
-    // // see 5.15.2.2 Identify Controller data structure (CNS 01h)
-    // uint64_t get_mdts_size(int fd, const char *devicename)
-    // {
-    //     void *membase = mmap_registers(devicename);
-    //     if (!membase)
-    //         return -1;
-    //     __u64 val;
-
-    //     // reverse edian
-    //     __u32 *tmp = (__u32 *)(membase); // since NVME_REG_CAP = 0, no need to change address
-    //     __u32 low, high;
-
-    //     low = le32_to_cpu(*tmp);
-    //     high = le32_to_cpu(*(tmp + 1));
-
-    //     val = ((__u64)high << 32) | low;
-    //     __u8 *p = (__u8 *)&val;
-    //     uint32_t cap_mpsmin = 1 << (12 + (p[6] & 0xf));
-
-    //     munmap(membase, getpagesize());
-
-    //     struct nvme_id_ctrl ctrl;
-    //     int ret = nvme_identify_ctrl(fd, &ctrl);
-    //     if (ret != 0)
-    //     {
-    //         perror("ss nvme id ctrl error ");
-    //         return ret;
-    //     }
-    //     // return (1 << ctrl.mdts) * cap_mpsmin;        // Without QEMU Bug!
-    //     return (1 << (ctrl.mdts - 1)) * cap_mpsmin; // With QEMU Bug!
-    // }
+    int restore_descriptor(){
+        return 0;
+    }
 
     int get_free_lz_num(int offset)
     {
@@ -417,6 +341,10 @@ extern "C"
         zns_dev = *my_dev;
         zns_dev_ex = info;
 
+        //read log_mapping data_mapping zns_device_extra_info
+        //if log zone number <512, one zone reserve for metadata_zone is enough
+        int ret = init_descriptor();
+
         return 0;
     }
 
@@ -515,6 +443,8 @@ extern "C"
 
         pthread_mutex_destroy(&info->gc_mutex);
         pthread_cond_destroy(&info->gc_wakeup);
+
+        int ret = restore_descriptor();
 
         free(info->zone_states);
         free(my_dev->_private);
