@@ -48,7 +48,7 @@ namespace ROCKSDB_NAMESPACE
 
         if (read_num < n)
         {
-            *(scratch + read_num) = '\n';
+            // *(scratch + read_num) = '\n';
             read_num += 1;
         }       
         *result = Slice(scratch, read_num);
@@ -66,8 +66,6 @@ namespace ROCKSDB_NAMESPACE
 
         if(read_num == 0 && _eof == 0)
         {
-            *(scratch+read_num) = '\n';
-            read_num += 1;
             _eof = 1;
         }
 

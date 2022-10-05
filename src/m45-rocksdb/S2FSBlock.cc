@@ -385,7 +385,7 @@ namespace ROCKSDB_NAMESPACE
 
             if (cur_off + S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) > offset)
             {
-                uint64_t in_block_off = offset - cur_off, max_readable = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) - in_block_off;
+                uint64_t in_block_off = offset - cur_off, max_readable = data_block->ContentSize() - in_block_off;
                 
                 uint64_t to_read = max_readable >= n ? n : max_readable;
                 memcpy(buf + buf_off, data_block->Content() + in_block_off, to_read);
