@@ -233,13 +233,6 @@ extern "C"
                 }
             }
 
-            ret = ss_nvme_device_io_with_mdts(zone_no, buffer, nlb * lsb, false);
-            if (ret)
-            {
-                printf("ERROR: failed to write zone at 0x%lx, ret: %ld\n", zone_no, ret);
-                return ret;
-            }
-
             if (used_log)
             {
                 // means we didn't find a empty zone to write
@@ -254,10 +247,16 @@ extern "C"
                     return ret;
                 }
                 zns_dev_ex->zone_states[old_zone / nlb] = FULL;
-                nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, zone_no, false, NVME_ZNS_ZSA_RESET, 0, NULL);
+                // nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, zone_no, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
             else 
             {
+                ret = ss_nvme_device_io_with_mdts(zone_no, buffer, nlb * lsb, false);
+                if (ret)
+                {
+                    printf("ERROR: failed to write zone at 0x%lx, ret: %ld\n", zone_no, ret);
+                    return ret;
+                }
                 data_mapping[iter->first] = zone_no;
                 zns_dev_ex->zone_states[zone_no / nlb] = FULL;
 
