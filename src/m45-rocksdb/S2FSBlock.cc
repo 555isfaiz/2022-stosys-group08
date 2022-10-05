@@ -380,20 +380,25 @@ namespace ROCKSDB_NAMESPACE
         uint64_t cur_off = 0, read_num = 0, buf_off = buf_offset, total_read = 0;
         for (auto off : _offsets)
         {
+            if (total_read >= n)
+                break;
+
             auto s = _fs->ReadSegment(addr_2_segment(off));
             auto data_block = s->GetBlockByOffset(addr_2_inseg_offset(off));
 
             if (cur_off + S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) > offset)
             {
-                uint64_t in_block_off = offset - cur_off, max_readable = data_block->ContentSize() - in_block_off;
+                uint64_t in_block_off = (cur_off > offset ? 0 : offset - cur_off), max_readable = data_block->ContentSize() - in_block_off;
                 
                 uint64_t to_read = max_readable >= n ? n : max_readable;
                 memcpy(buf + buf_off, data_block->Content() + in_block_off, to_read);
                 buf_off += to_read;
                 read_num += to_read;
                 total_read += to_read;
+                cur_off += to_read;
             }
-            cur_off += S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
+            else
+                cur_off += S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
         }
 
         if (read_num < n && _next)
@@ -407,6 +412,48 @@ namespace ROCKSDB_NAMESPACE
 
         Unlock();
         return total_read;
+    }
+
+    int S2FSBlock::ReadChildren(std::vector<std::string> *list)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: I am not dir inode, can't do this. My type: " << _type << " during S2FSBlock::ReadChildren."
+                      << "\n";
+            return -1;
+        }
+
+        WriteLock();
+        LivenessCheck();
+
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            for (auto attr : data->FileAttrs())
+            {
+                list->push_back(attr->Name());
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            in->ReadChildren(list);
+        }
+
+        Unlock();
+        return 0;
     }
 
     void S2FSBlock::RenameChild(const std::string &src, const std::string &target)

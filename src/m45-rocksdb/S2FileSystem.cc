@@ -276,7 +276,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewSequentialFile(const std::string &fname, const FileOptions &file_opts,
                                              std::unique_ptr<FSSequentialFile> *result, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
          auto r = _FileExists(fname, false, &inode);
         if (!r.ok())
@@ -301,7 +301,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewRandomAccessFile(const std::string &fname, const FileOptions &file_opts,
                                                std::unique_ptr<FSRandomAccessFile> *result, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         auto r = _FileExists(fname, false, &inode);
         if (!r.ok())
@@ -325,7 +325,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewWritableFile(const std::string &fname, const FileOptions &file_opts,
                                            std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
         if (_FileExists(fname, false, &inode).ok())
@@ -360,20 +360,20 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::ReopenWritableFile(const std::string &, const FileOptions &, std::unique_ptr<FSWritableFile> *,
                                               IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::NewRandomRWFile(const std::string &, const FileOptions &, std::unique_ptr<FSRandomRWFile> *,
                                            IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::NewMemoryMappedFileBuffer(const std::string &, std::unique_ptr<MemoryMappedFileBuffer> *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
@@ -388,7 +388,7 @@ namespace ROCKSDB_NAMESPACE
     S2FileSystem::NewDirectory(const std::string &name, const IOOptions &io_opts, std::unique_ptr<FSDirectory> *result,
                                IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         auto r = _FileExists(name, false, &inode);
         if (!r.ok())
@@ -399,20 +399,20 @@ namespace ROCKSDB_NAMESPACE
 
     IOStatus S2FileSystem::GetFreeSpace(const std::string &, const IOOptions &, uint64_t *, IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::Truncate(const std::string &, size_t, const IOOptions &, IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     // Create the specified directory. Returns error if directory exists.
     IOStatus S2FileSystem::CreateDir(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         if (_FileExists(dirname, false, &inode).ok())
             return IOStatus::IOError(__FUNCTION__);
@@ -450,7 +450,7 @@ namespace ROCKSDB_NAMESPACE
     // Creating.
     IOStatus S2FileSystem::CreateDirIfMissing(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         if (_FileExists(dirname, false, &inode).ok())
             return IOStatus::OK();
@@ -461,20 +461,20 @@ namespace ROCKSDB_NAMESPACE
     IOStatus
     S2FileSystem::GetFileSize(const std::string &fname, const IOOptions &options, uint64_t *file_size, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::DeleteDir(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::GetFileModificationTime(const std::string &fname, const IOOptions &options, uint64_t *file_mtime,
                                                    IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
@@ -482,7 +482,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::GetAbsolutePath(const std::string &db_path, const IOOptions &options, std::string *output_path,
                                            IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         if (!db_path.empty() && db_path[0] == '/')
         {
             *output_path = db_path;
@@ -503,7 +503,7 @@ namespace ROCKSDB_NAMESPACE
     // Needed
     IOStatus S2FileSystem::DeleteFile(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
         if (!_FileExists(fname, false, &inode).ok())
@@ -520,13 +520,13 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewLogger(const std::string &fname, const IOOptions &io_opts, std::shared_ptr<Logger> *result,
                                      IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::GetTestDirectory(const IOOptions &options, std::string *path, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
@@ -535,7 +535,7 @@ namespace ROCKSDB_NAMESPACE
     // REQUIRES: lock has not already been unlocked.
     IOStatus S2FileSystem::UnlockFile(FileLock *lock, const IOOptions &options, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSFileLock *fl = dynamic_cast<S2FSFileLock *>(lock);
         if (fl->Unlock())
         {
@@ -563,7 +563,7 @@ namespace ROCKSDB_NAMESPACE
     // May create the named file if it does not already exist.
     IOStatus S2FileSystem::LockFile(const std::string &fname, const IOOptions &options, FileLock **lock, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
         S2FSBlock *new_inode;
@@ -600,26 +600,26 @@ namespace ROCKSDB_NAMESPACE
     IOStatus
     S2FileSystem::AreFilesSame(const std::string &, const std::string &, const IOOptions &, bool *, IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::NumFileLinks(const std::string &, const IOOptions &, uint64_t *, IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::LinkFile(const std::string &, const std::string &, const IOOptions &, IODebugContext *)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 
     IOStatus S2FileSystem::RenameFile(const std::string &src, const std::string &target, const IOOptions &options,
                                       IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         if (_FileExists(src, true, &inode).IsNotFound())
             return IOStatus::NotFound();
@@ -631,7 +631,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::GetChildrenFileAttributes(const std::string &dir, const IOOptions &options,
                                                      std::vector<FileAttributes> *result, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return FileSystem::GetChildrenFileAttributes(dir, options, result, dbg);
     }
 
@@ -646,8 +646,15 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::GetChildren(const std::string &dir, const IOOptions &options, std::vector<std::string> *result,
                                        IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        return IOStatus::IOError(__FUNCTION__);
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        S2FSBlock *inode;
+        auto r = _FileExists(dir, true, &inode);
+        if (!r.ok())
+            return r;
+
+        if (inode->ReadChildren(result))
+            return IOStatus::IOError();
+        return IOStatus::OK();
     }
 
     // Returns OK if the named file exists.
@@ -657,7 +664,7 @@ namespace ROCKSDB_NAMESPACE
     //         IOError if an IO Error was encountered
     IOStatus S2FileSystem::FileExists(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
         return _FileExists(fname, false, &inode);
     }
@@ -666,7 +673,7 @@ namespace ROCKSDB_NAMESPACE
     S2FileSystem::ReuseWritableFile(const std::string &fname, const std::string &old_fname, const FileOptions &file_opts,
                                     std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
     {
-        std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         return IOStatus::IOError(__FUNCTION__);
     }
 }

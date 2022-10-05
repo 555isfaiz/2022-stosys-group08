@@ -191,6 +191,7 @@ namespace ROCKSDB_NAMESPACE
         int DataAppend(const char *data, uint64_t len);
         int DirectoryAppend(S2FSFileAttr& fa);
         int Read(char *buf, uint64_t n, uint64_t offset, uint64_t buf_offset);
+        int ReadChildren(std::vector<std::string> *list);
         void RenameChild(const std::string &src, const std::string &target);
         // No locking inside
         int Flush();

@@ -189,7 +189,7 @@ namespace ROCKSDB_NAMESPACE
                 memcpy(data_block->Content(), data + allocated, to_copy);
                 data_block->AddContentSize(to_copy);
             }
-            allocated += to_copy;
+            allocated += S2FSBlock::MaxDataSize(inode->Type());
             empty = GetEmptyBlock();
         }
 
@@ -200,6 +200,7 @@ namespace ROCKSDB_NAMESPACE
 
     int S2FSSegment::RemoveINode(uint64_t inode_id)
     {
+        _blocks[addr_2_block(_inode_map[inode_id])] = NULL;
         _inode_map[inode_id] = 0;
         for (auto p : _name_2_inode)
         {
