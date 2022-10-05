@@ -24,6 +24,7 @@ SOFTWARE.
 #define STOSYS_PROJECT_ZNS_DEVICE_H
 
 #include <cstdint>
+#include <pthread.h>
 
 extern "C"{
 //https://github.com/mplulu/google-breakpad/issues/481 - taken from here
@@ -64,6 +65,14 @@ struct zns_device_extra_info
     uint32_t mdts;
     int gc_watermark;
     int log_zone_num_config;
+
+    pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
+
+    pthread_t gc_thread_id = 0;
+    bool gc_thread_stop = false;
+    bool do_gc = false;
     // ...
 };
 

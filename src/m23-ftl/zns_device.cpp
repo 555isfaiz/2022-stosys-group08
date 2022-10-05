@@ -25,7 +25,6 @@ SOFTWARE.
 #include <cerrno>
 #include <unordered_map>
 #include <string.h>
-#include <pthread.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -44,14 +43,6 @@ extern "C"
 
     std::unordered_map<int64_t, int64_t> log_mapping;
     std::unordered_map<int64_t, int64_t> data_mapping;
-
-    pthread_mutex_t gc_mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t gc_wakeup = PTHREAD_COND_INITIALIZER;
-    pthread_cond_t gc_sleep = PTHREAD_COND_INITIALIZER;
-
-    pthread_t gc_thread_id = 0;
-    bool gc_thread_stop = false;
-    bool do_gc = false;
 
     struct user_zns_device *zns_dev;
     struct zns_device_extra_info *zns_dev_ex;
@@ -272,17 +263,18 @@ extern "C"
 
     void *gc_loop(void *args)
     {
+        struct zns_device_extra_info *info = (struct zns_device_extra_info *)args;
         while (1)
         {
-            pthread_mutex_lock(&gc_mutex);
-            while (!gc_thread_stop && !do_gc)
+            pthread_mutex_lock(&info->gc_mutex);
+            while (!info->gc_thread_stop && !info->do_gc)
             {
-                pthread_cond_wait(&gc_wakeup, &gc_mutex);
+                pthread_cond_wait(&info->gc_wakeup, &info->gc_mutex);
             }
 
-            if (gc_thread_stop)
+            if (info->gc_thread_stop)
             {
-                pthread_mutex_unlock(&gc_mutex);
+                pthread_mutex_unlock(&info->gc_mutex);
                 break;
             }
 
@@ -306,16 +298,16 @@ extern "C"
                 printf("Error: GC failed, ret:%d\n", ret);
             }
 
-            for (int i = 0; i < zns_dev_ex->log_zone_num_config; i++)
+            for (int i = 0; i < info->log_zone_num_config; i++)
             {
-                nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, i * zns_dev_ex->blocks_per_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
+                nvme_zns_mgmt_send(info->fd, info->nsid, i * info->blocks_per_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
-            zns_dev_ex->log_zone_end = zns_dev_ex->log_zone_start;
+            info->log_zone_end = info->log_zone_start;
             log_mapping.clear();
 
-            do_gc = false;
-            pthread_cond_signal(&gc_sleep);
-            pthread_mutex_unlock(&gc_mutex);
+            info->do_gc = false;
+            pthread_cond_signal(&info->gc_sleep);
+            pthread_mutex_unlock(&info->gc_mutex);
         }
 
         return (void *)0;
@@ -415,7 +407,7 @@ extern "C"
         // record log_zone_start and log_zone_end for ms5
         // record data_zone_start and data_zone_end for ms5
 
-        ret = pthread_create(&gc_thread_id, NULL, &gc_loop, NULL);
+        ret = pthread_create(&info->gc_thread_id, NULL, &gc_loop, info);
         if (ret)
         {
             printf("ERROR: failed to create gc thread %d \n", ret);
@@ -485,12 +477,12 @@ extern "C"
 
         struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
         uint32_t blocks = size / my_dev->lba_size_bytes;
-        pthread_mutex_lock(&gc_mutex);
+        pthread_mutex_lock(&zns_dev_ex->gc_mutex);
         while (get_free_lz_num(blocks) <= info->gc_watermark)
         {
-            do_gc = true;
-            pthread_cond_signal(&gc_wakeup);
-            pthread_cond_wait(&gc_sleep, &gc_mutex);
+            zns_dev_ex->do_gc = true;
+            pthread_cond_signal(&zns_dev_ex->gc_wakeup);
+            pthread_cond_wait(&zns_dev_ex->gc_sleep, &zns_dev_ex->gc_mutex);
         }
 
         __u64 res_lba;
@@ -508,22 +500,23 @@ extern "C"
             log_mapping[address + i * my_dev->lba_size_bytes] = lz_end_before + i;
         }
 
-        pthread_mutex_unlock(&gc_mutex);
+        pthread_mutex_unlock(&zns_dev_ex->gc_mutex);
         return 0;
     }
 
     int deinit_ss_zns_device(struct user_zns_device *my_dev)
     {
-        gc_thread_stop = true;
-        pthread_cond_signal(&gc_wakeup);
+        struct zns_device_extra_info *info = (struct zns_device_extra_info *)my_dev->_private;
+        info->gc_thread_stop = true;
+        pthread_cond_signal(&info->gc_wakeup);
 
         // wait for gc stop
-        pthread_join(gc_thread_id, NULL);
+        pthread_join(info->gc_thread_id, NULL);
 
-        pthread_mutex_destroy(&gc_mutex);
-        pthread_cond_destroy(&gc_wakeup);
+        pthread_mutex_destroy(&info->gc_mutex);
+        pthread_cond_destroy(&info->gc_wakeup);
 
-        free(zns_dev_ex->zone_states);
+        free(info->zone_states);
         free(my_dev->_private);
         free(my_dev);
         return 0;
