@@ -377,7 +377,7 @@ namespace ROCKSDB_NAMESPACE
                 auto offsets = b->Offsets();
                 for (size_t ii = 0; ii < offsets.size(); ii++)
                 {
-                    if (offsets[ii] = old_off)
+                    if (offsets[ii] == old_off)
                     {
                         offsets[ii] = _addr_start + new_inseg_off;
                         b->Unlock();
