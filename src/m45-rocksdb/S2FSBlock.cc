@@ -364,7 +364,7 @@ namespace ROCKSDB_NAMESPACE
                     }
 
                     S2FSBlock *res;
-                    tmp = segment->AllocateNew("", ITYPE_FILE_DATA, data + io_num, len - io_num, &res, NULL);
+                    tmp = segment->AllocateNew("", ITYPE_FILE_INODE, data + io_num, len - io_num, &res, NULL);
                     if (tmp < 0)
                     {
                         return -1;
@@ -384,7 +384,7 @@ namespace ROCKSDB_NAMESPACE
             {
                 uint64_t left = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) - data_block->ContentSize();
                 uint64_t to_copy = (len > left ? left : len);
-                memcpy(data_block->Content() + data_block->ContentSize(), data, to_copy);
+                memcpy(data_block->Content() + data_block->ContentSize(), data + io_num, to_copy);
                 data_block->AddContentSize(to_copy);
                 io_num += to_copy;
                 Flush();

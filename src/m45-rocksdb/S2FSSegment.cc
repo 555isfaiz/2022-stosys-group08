@@ -105,7 +105,7 @@ namespace ROCKSDB_NAMESPACE
 
         if (type != ITYPE_DIR_INODE && type != ITYPE_FILE_INODE)
         {
-            std::cout << "Error: allocating new for unknown block type: " << type << " during S2FSSegment::Allocate." << "\n";
+            std::cout << "Error: allocating new for unknown block type: " << type << " during S2FSSegment::AllocateNew." << "\n";
             return -1;
         }
 
@@ -187,6 +187,9 @@ namespace ROCKSDB_NAMESPACE
         auto inode = GetBlockByOffset(_inode_map[inode_id]);
         uint64_t to_allocate = round_up(size, S2FSBlock::MaxDataSize(inode->Type()));
         uint64_t empty = GetEmptyBlock();
+        if (!empty)
+            return -1;  // this segment is full
+
         while (empty && allocated < to_allocate)
         {
             inode->AddOffset(empty + Addr());
@@ -200,6 +203,7 @@ namespace ROCKSDB_NAMESPACE
                 data_block->AddContentSize(to_copy);
             }
             allocated += S2FSBlock::MaxDataSize(inode->Type());
+            *res = data_block;
             empty = GetEmptyBlock();
         }
 

@@ -21,7 +21,7 @@ namespace ROCKSDB_NAMESPACE
     #define INODE_MAP_ENTRY_LENGTH              16
     #define FILE_ATTR_SIZE                      64
     #define map_contains(map, key)              (map.find(key) != map.end())
-    #define addr_2_segment(addr)                ((addr) / S2FSSegment::Size())
+    #define addr_2_segment(addr)                ((addr) / S2FSSegment::Size() * S2FSSegment::Size())
     #define segment_2_addr(segm)                ((segm) * S2FSSegment::Size())
     #define addr_2_block(addr)                  (((addr) / S2FSBlock::Size()) % S2FSSegment::Size())
     #define addr_2_inseg_offset(addr)           ((addr) % S2FSSegment::Size())
