@@ -119,15 +119,12 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSSegment *S2FileSystem::ReadSegment(uint64_t from)
     {
-        for (auto s : _cache)
+        if (!map_contains(_cache, from))
         {
-            if (s.first == from)
-            {
-                return s.second;
-            }
+            return NULL;
         }
-
-        return NULL;
+        
+        return _cache[from];
     }
 
     S2FSSegment *S2FileSystem::LoadSegmentFromDisk()
