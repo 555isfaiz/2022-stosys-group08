@@ -375,11 +375,12 @@ namespace ROCKSDB_NAMESPACE
                 
                 b->WriteLock();
                 auto offsets = b->Offsets();
-                for (size_t ii = 0; ii < offsets.size(); ii++)
+                for (auto iter = offsets.begin(); iter != offsets.end(); iter++)
                 {
-                    if (offsets[ii] == old_off)
+                    if (*iter == old_off)
                     {
-                        offsets[ii] = _addr_start + new_inseg_off;
+                        offsets.erase(iter);
+                        offsets.insert(iter, _addr_start + new_inseg_off);
                         b->Unlock();
                         goto done;
                     }
