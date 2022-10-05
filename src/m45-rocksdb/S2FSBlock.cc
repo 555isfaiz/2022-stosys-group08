@@ -323,12 +323,12 @@ namespace ROCKSDB_NAMESPACE
         auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
         segment->Unlock();
 
-        if (data_block->ContentSize() + len > S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
+        uint64_t io_num = 0;
+        while (io_num < len)
         {
-            uint64_t allocated = 0;
-            do
+            if (data_block->ContentSize() >= S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
             {
-                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + allocated, len - allocated, &data_block);
+                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + io_num, len - io_num, &data_block);
                 // this segment is full, allocate new in next segment
                 if (tmp < 0)
                 {
@@ -339,7 +339,7 @@ namespace ROCKSDB_NAMESPACE
                     }
 
                     S2FSBlock *res;
-                    tmp = segment->AllocateNew("", ITYPE_FILE_DATA, data + allocated, len - allocated, &res, NULL);
+                    tmp = segment->AllocateNew("", ITYPE_FILE_DATA, data + io_num, len - io_num, &res, NULL);
                     if (tmp < 0)
                     {
                         return -1;
@@ -349,20 +349,21 @@ namespace ROCKSDB_NAMESPACE
                     res->WriteLock();
                     inodes.push_back(res);
                     inode = res;
-                    allocated += tmp;
+                    io_num += tmp;
+                    break;
                 }
                 else
-                {
-                    allocated += tmp;
-                }
-
-            } while (allocated < len);
-        }
-        else
-        {
-            memcpy(data_block->Content() + data_block->ContentSize(), data, len);
-            data_block->AddContentSize(len);
-            Flush();
+                    io_num += tmp;
+            }
+            else
+            {
+                uint64_t left = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) - data_block->ContentSize();
+                uint64_t to_copy = (len > left ? left : len);
+                memcpy(data_block->Content() + data_block->ContentSize(), data, to_copy);
+                data_block->AddContentSize(to_copy);
+                io_num += to_copy;
+                Flush();
+            }
         }
 
         while (!inodes.empty())
