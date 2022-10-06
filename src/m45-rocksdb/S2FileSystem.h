@@ -29,6 +29,7 @@ SOFTWARE.
 #include "rocksdb/status.h"
 #include "S2FSImpl.h"
 #include "S2FSCommon.h"
+#include "my_thread_pool.h"
 
 #include <zns_device.h>
 #include <iostream>
@@ -150,6 +151,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSSegment *LoadSegmentFromDisk();
         // Read a segment regardless of whether it is in cache or not
         S2FSSegment *LoadSegmentFromDisk(uint64_t from);
+        my_thread_pool *_thread_pool;
 
     private:
         std::string _uri;

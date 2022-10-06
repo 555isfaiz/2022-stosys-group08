@@ -62,6 +62,7 @@ namespace ROCKSDB_NAMESPACE
             std::cout << "Error: ret " << ret << "\n";
         }
         free(params.name);
+        pool_init(&_thread_pool, 4);
         this->_zns_dev_ex = (struct zns_device_extra_info *)this->_zns_dev->_private;
         assert(ret == 0);
         assert(this->_zns_dev->lba_size_bytes != 0);

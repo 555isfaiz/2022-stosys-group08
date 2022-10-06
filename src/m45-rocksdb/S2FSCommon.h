@@ -6,6 +6,7 @@
 #include "rocksdb/file_system.h"
 #include "rocksdb/status.h"
 #include "S2FileSystem.h"
+#include "my_thread_pool.h"
 
 #include <list>
 #include <atomic>

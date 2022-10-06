@@ -75,6 +75,22 @@ namespace ROCKSDB_NAMESPACE
         return NULL;
     }
 
+    struct FlushArgs
+    {
+        S2FSSegment *s;
+        uint64_t off = 0;
+    };
+
+    void *FlushWarpper(void *arg)
+    {
+        FlushArgs *aarg = (FlushArgs *)arg;
+        aarg->s->ReadLock();
+        aarg->s->Flush(aarg->off);
+        aarg->s->Unlock();
+        free(arg);
+        return (void *)NULL;
+    }
+
     int64_t S2FSSegment::AllocateNew(const std::string &name, INodeType type, S2FSBlock **res, S2FSBlock *parent_dir)
     {
         if (name.length() > MAX_NAME_LENGTH)
@@ -119,8 +135,12 @@ namespace ROCKSDB_NAMESPACE
 
         *res = inode;
 
-        Flush(inode->GlobalOffset() - _addr_start);
         Unlock();
+        FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
+        args->s = this;
+        args->off = inode->GlobalOffset() - _addr_start;
+        pool_exec(_fs->_thread_pool, FlushWarpper, args);
+        // Flush(inode->GlobalOffset() - _addr_start);
 
         // Do this after releasing the lock, otherwise deadlock happens
         if (inode && parent_dir)
@@ -154,8 +174,12 @@ namespace ROCKSDB_NAMESPACE
         _cur_size += to_copy + 9;
         *res = data_block;
 
-        Flush(data_block->GlobalOffset() - _addr_start);
         Unlock();
+        FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
+        args->s = this;
+        args->off = data_block->GlobalOffset() - _addr_start;
+        pool_exec(_fs->_thread_pool, FlushWarpper, args);
+        // Flush(data_block->GlobalOffset() - _addr_start);
         return to_copy;
     }
 
