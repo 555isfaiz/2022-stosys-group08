@@ -11,6 +11,7 @@
 #include <atomic>
 #include <vector>
 #include <unordered_map>
+#include <map>
 #include <pthread.h>
 #include <zns_device.h>
 
@@ -55,8 +56,8 @@ namespace ROCKSDB_NAMESPACE
         virtual inline int WriteLock() { return pthread_rwlock_wrlock(&_rwlock); }
         virtual inline int Unlock() { return pthread_rwlock_unlock(&_rwlock); }
 
-        virtual void Serialize(char *buffer) = 0;
-        virtual void Deserialize(char *buffer) = 0;
+        virtual uint64_t Serialize(char *buffer) = 0;
+        virtual uint64_t Deserialize(char *buffer) = 0;
     };
 
     class S2FSFileAttr : public S2FSObject
@@ -74,8 +75,8 @@ namespace ROCKSDB_NAMESPACE
         S2FSFileAttr(){}
         ~S2FSFileAttr(){}
 
-        void Serialize(char *buffer);
-        void Deserialize(char *buffer);
+        uint64_t Serialize(char *buffer);
+        uint64_t Deserialize(char *buffer);
 
         inline const std::string& Name()                        { return _name; }
         inline uint64_t Size()                                  { return _size; }
@@ -111,31 +112,31 @@ namespace ROCKSDB_NAMESPACE
         std::list<S2FSFileAttr*> _file_attrs;
         // Only valid for ITYPE_FILE_DATA type.
         char *_content;
-        // Only valid for ITYPE_FILE_DATA type.
+        // Only valid for ITYPE_DATA types. For DIR_DATA, this mean the maximum number of entries in _file_attrs.
         uint64_t _content_size;
         uint64_t _segment_addr;
         uint64_t _global_offset;
         bool _loaded;
 
-        void SerializeFileInode(char *buffer);
-        void DeserializeFileInode(char *buffer);
-        void SerializeDirInode(char *buffer);
-        void DeserializeDirInode(char *buffer);
-        void SerializeDirData(char *buffer);
-        void DeserializeDirData(char *buffer);
+        uint64_t SerializeFileInode(char *buffer);
+        uint64_t DeserializeFileInode(char *buffer);
+        uint64_t SerializeDirInode(char *buffer);
+        uint64_t DeserializeDirInode(char *buffer);
+        uint64_t SerializeDirData(char *buffer);
+        uint64_t DeserializeDirData(char *buffer);
 
     public:
-        S2FSBlock(INodeType type, uint64_t segmeng_addr) 
+        S2FSBlock(INodeType type, uint64_t segmeng_addr, uint64_t content_size) 
         : _id(id_alloc++), 
         _type(type),
         _next(0),
         _prev(0),
-        _content_size(0),
+        _content_size(content_size),
         _segment_addr(segmeng_addr),
         _loaded(true)
         {
-            if (type == ITYPE_FILE_DATA)
-                _content = (char *)calloc(S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), sizeof(char));
+            if (type == ITYPE_FILE_DATA && content_size)
+                _content = (char *)calloc(content_size, sizeof(char));
             else
                 _content = 0;
         }
@@ -144,8 +145,8 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock(){}
         ~S2FSBlock();
 
-        void Serialize(char *buffer);
-        void Deserialize(char *buffer);
+        uint64_t Serialize(char *buffer);
+        uint64_t Deserialize(char *buffer);
         // Call this with write lock acquired
         void LivenessCheck();
 
@@ -173,10 +174,8 @@ namespace ROCKSDB_NAMESPACE
         }
         inline char* Content()                                  { return _content; }
         inline uint64_t ContentSize()                           { return _content_size; }
-        inline void AddContentSize(uint64_t to_add)             
-        { 
-            _content_size += to_add; 
-        }
+        inline void AddContentSize(uint64_t to_add)             { _content_size += to_add; }
+        inline void SetContentSize(uint64_t to_set)             { _content_size = to_set; }
         inline void SegmentAddr(uint64_t addr)                  { _segment_addr = addr; }
         inline uint64_t SegmentAddr()                           { return _segment_addr; }
         inline void Loaded(bool loaded)                         { _loaded = loaded; }
@@ -194,9 +193,8 @@ namespace ROCKSDB_NAMESPACE
         int ReadChildren(std::vector<std::string> *list);
         void RenameChild(const std::string &src, const std::string &target);
         // No locking inside
-        int Flush();
-        // No locking inside
         int Offload();
+        uint64_t ActualSize();
 
         static uint64_t Size();
         static uint64_t MaxDataSize(INodeType type);
@@ -211,19 +209,17 @@ namespace ROCKSDB_NAMESPACE
         std::unordered_map<uint64_t, uint64_t> _inode_map;
         /* k: name, v: inode id*/
         std::unordered_map<std::string, uint32_t> _name_2_inode;
-        std::vector<S2FSBlock*> _blocks;
+        /* k: in-segment offset, v: block*/
+        std::map<uint64_t, S2FSBlock*> _blocks;
         uint32_t _reserve_for_inode;
+        uint64_t _cur_size;
     public:
         S2FSSegment(uint64_t addr);
         ~S2FSSegment();
 
         void Preload(char *buffer);
-        void Serialize(char *buffer);
-        void Deserialize(char *buffer);
-
-        // return: in-segment offset
-        uint64_t GetEmptyBlock();
-        uint64_t GetEmptyBlockNum();
+        uint64_t Serialize(char *buffer);
+        uint64_t Deserialize(char *buffer);
 
         // Get block by in-segment offset
         // No lock ops in this function, not thread safe
@@ -233,7 +229,7 @@ namespace ROCKSDB_NAMESPACE
         // No lock ops in this function, not thread safe
         // Make sure to use WriteLock() before calling this
         S2FSBlock *LookUp(const std::string &name);
-        int64_t AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir);
+        int64_t AllocateNew(const std::string &name, INodeType type, S2FSBlock **res, S2FSBlock *parent_dir);
         // Should call WriteLock() for inode_id before calling this
         int64_t AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res);
         // Equivalent to delete
@@ -245,9 +241,13 @@ namespace ROCKSDB_NAMESPACE
         // No locking inside
         int Flush();
         // No locking inside
+        int Flush(uint64_t in_seg_off);
+        // No locking inside
         int Offload();
         int OnGC();
 
+        inline uint64_t CurSize() { return _cur_size; }
+        inline void AddSize(uint64_t to_add) { _cur_size += to_add; }
         inline uint64_t Addr() { return _addr_start; }
         inline bool IsEmpty() { return _inode_map.empty(); }
         inline uint64_t GetGlobalOffsetByINodeID(uint64_t id) { return _addr_start + _inode_map.at(id); }

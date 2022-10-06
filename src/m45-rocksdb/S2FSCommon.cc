@@ -4,7 +4,7 @@ namespace ROCKSDB_NAMESPACE
 {
     S2FileSystem *S2FSObject::_fs;
 
-    void S2FSFileAttr::Serialize(char *buffer)
+    uint64_t S2FSFileAttr::Serialize(char *buffer)
     {
         strcpy(buffer, _name.c_str());
         uint64_t ptr = MAX_NAME_LENGTH;
@@ -13,16 +13,20 @@ namespace ROCKSDB_NAMESPACE
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _create_time;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _offset;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _inode_id;
+        return FILE_ATTR_SIZE;
     }
 
-    void S2FSFileAttr::Deserialize(char *buffer)
+    uint64_t S2FSFileAttr::Deserialize(char *buffer)
     {
         uint64_t ptr = MAX_NAME_LENGTH;
-        Name(std::string(buffer, MAX_NAME_LENGTH))
-        ->IsDir(*(uint64_t *)(buffer + ptr) & ((uint64_t)1 << 63))
+        Name(std::string(buffer, MAX_NAME_LENGTH));
+        if (Name().at(0) == '\0')
+            return 0;
+        IsDir(*(uint64_t *)(buffer + ptr) & ((uint64_t)1 << 63))
         ->Size(*(uint64_t *)(buffer + ptr) | ((uint64_t)1 << 63))
         ->CreateTime(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
         ->Offset(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
         ->InodeID(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))));
+        return FILE_ATTR_SIZE;
     }
 }

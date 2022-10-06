@@ -30,7 +30,7 @@ namespace ROCKSDB_NAMESPACE
         }
     }
 
-    void S2FSBlock::SerializeFileInode(char *buffer)
+    uint64_t S2FSBlock::SerializeFileInode(char *buffer)
     {
         *buffer = _type << 4;
         uint64_t ptr = 0;
@@ -42,9 +42,10 @@ namespace ROCKSDB_NAMESPACE
         {
             *(uint64_t *)(buffer + ptr) = *iter;
         }
+        return S2FSBlock::Size();
     }
 
-    void S2FSBlock::DeserializeFileInode(char *buffer)
+    uint64_t S2FSBlock::DeserializeFileInode(char *buffer)
     {
         uint64_t ptr = 0;
         _next = *(uint64_t *)(buffer + (ptr += 1));
@@ -55,9 +56,10 @@ namespace ROCKSDB_NAMESPACE
         {
             _offsets.push_back(*(uint64_t *)(buffer + ptr));
         }
+        return S2FSBlock::Size();
     }
 
-    void S2FSBlock::SerializeDirInode(char *buffer)
+    uint64_t S2FSBlock::SerializeDirInode(char *buffer)
     {
         *buffer = _type << 4;
         uint64_t ptr = 0;
@@ -70,9 +72,10 @@ namespace ROCKSDB_NAMESPACE
         {
             *(uint64_t *)(buffer + ptr) = *iter;
         }
+        return S2FSBlock::Size();
     }
 
-    void S2FSBlock::DeserializeDirInode(char *buffer)
+    uint64_t S2FSBlock::DeserializeDirInode(char *buffer)
     {
         uint64_t ptr = 0;
         _next = *(uint64_t *)(buffer + (ptr += 1));
@@ -85,60 +88,68 @@ namespace ROCKSDB_NAMESPACE
         {
             _offsets.push_back(*(uint64_t *)(buffer + ptr));
         }
+        return S2FSBlock::Size();
     }
 
-    void S2FSBlock::SerializeDirData(char *buffer)
+    uint64_t S2FSBlock::SerializeDirData(char *buffer)
     {
         *buffer = _type << 4;
-        uint64_t ptr = 1;
+        *(uint64_t *)(buffer + 1) = _content_size;
+        uint64_t ptr = 9;
         for (auto fa : _file_attrs)
         {
-            fa->Serialize(buffer + ptr);
-            ptr += FILE_ATTR_SIZE;
+            ptr += fa->Serialize(buffer + ptr);
         }
+        return _content_size;
     }
 
-    void S2FSBlock::DeserializeDirData(char *buffer)
+    uint64_t S2FSBlock::DeserializeDirData(char *buffer)
     {
-        uint64_t ptr = 1;
-        while (*(uint64_t *)(buffer + ptr))
+        uint64_t ptr = 9;
+        _content_size = *(uint64_t *)(buffer + 1);
+        for (size_t i = 0; i < _content_size; i++)
         {
             S2FSFileAttr *fa = new S2FSFileAttr;
-            fa->Deserialize(buffer + ptr);
+            auto size = fa->Deserialize(buffer + ptr);
+            if (size == 0)
+            {
+                delete fa;
+                break;
+            }
+            ptr += size;
             _file_attrs.push_back(fa);
         }
+        return _content_size;
     }
 
-    void S2FSBlock::Serialize(char *buffer)
+    uint64_t S2FSBlock::Serialize(char *buffer)
     {
         switch (_type)
         {
         case ITYPE_DIR_INODE:
-            SerializeDirInode(buffer);
-            break;
+            return SerializeDirInode(buffer);
 
         case ITYPE_DIR_DATA:
-            SerializeDirData(buffer);
-            break;
+            return SerializeDirData(buffer);
 
         case ITYPE_FILE_INODE:
-            SerializeDirData(buffer);
-            break;
+            return SerializeFileInode(buffer);
 
         case ITYPE_FILE_DATA:
             *buffer = _type << 4;
             *(uint64_t *)(buffer + 1) = _content_size;
             memcpy(buffer + 9, _content, _content_size);
-            break;
+            return _content_size + 9;
 
         default:
-            std::cout << "Error: unknown block type: " << _type << " during S2FSBlock::Serialize."
-                      << "\n";
+            // std::cout << "Error: unknown block type: " << _type << " during S2FSBlock::Serialize."
+            //           << "\n";
             break;
         }
+        return 0;
     }
 
-    void S2FSBlock::Deserialize(char *buffer)
+    uint64_t S2FSBlock::Deserialize(char *buffer)
     {
         uint8_t type = *buffer >> 4;
         _loaded = true;
@@ -146,22 +157,19 @@ namespace ROCKSDB_NAMESPACE
         {
         case 1:
             _type = ITYPE_FILE_INODE;
-            DeserializeFileInode(buffer);
-            break;
+            return DeserializeFileInode(buffer);
         case 2:
             _type = ITYPE_FILE_DATA;
             _content = (char *)calloc(Size() - 1, sizeof(char));
             _content_size = *(uint64_t *)(buffer + 1);
             memcpy(_content, buffer + 9, _content_size);
-            break;
+            return _content_size + 9;
         case 4:
             _type = ITYPE_DIR_INODE;
-            DeserializeDirInode(buffer);
-            break;
+            return DeserializeDirInode(buffer);
         case 8:
             _type = ITYPE_DIR_DATA;
-            DeserializeDirData(buffer);
-            break;
+            return DeserializeDirData(buffer);
         case 0:
             // _type = ITYPE_UNKNOWN;
             break;
@@ -171,6 +179,7 @@ namespace ROCKSDB_NAMESPACE
                       << "\n";
             break;
         }
+        return 0;
     }
 
     void S2FSBlock::LivenessCheck()
@@ -275,47 +284,40 @@ namespace ROCKSDB_NAMESPACE
         auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
         segment->Unlock();
 
-        if (!data_block || (data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > S2FSBlock::MaxDataSize(ITYPE_DIR_INODE))
+        if (!data_block || (data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > data_block->ContentSize())
         {
-            uint64_t allocated = 0, to_allocate = S2FSBlock::MaxDataSize(ITYPE_DIR_INODE);
+            uint64_t to_allocate = S2FSBlock::MaxDataSize(ITYPE_DIR_INODE);
             do
             {
-                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate - allocated, &data_block);
+                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate, &data_block);
                 // this segment is full, allocate new in next segment
                 if (tmp < 0)
                 {
                     segment = _fs->FindNonFullSegment();
                     if (!segment)
-                    {
                         return -1;
-                    }
 
                     S2FSBlock *res;
-                    tmp = segment->AllocateNew("", ITYPE_DIR_INODE, NULL, to_allocate - allocated, &res, NULL);
+                    tmp = segment->AllocateNew("", ITYPE_DIR_INODE, &res, NULL);
                     if (tmp < 0)
-                    {
-                        return -1;
-                    }
+                        continue;
+
                     inode->Next(res->GlobalOffset());
                     res->Prev(inode->GlobalOffset());
                     res->WriteLock();
                     inodes.push_back(res);
                     inode = res;
-                    allocated += tmp;
                 }
                 else
-                {
-                    allocated += tmp;
-                }
+                    break;
 
-            } while (allocated < to_allocate);
+            } while (true);
 
             segment->GetBlockByOffset(inode->Offsets().back())->AddFileAttr(fa);
         }
         else
         {
             data_block->AddFileAttr(fa);
-            Flush();
         }
 
         while (!inodes.empty())
@@ -329,6 +331,8 @@ namespace ROCKSDB_NAMESPACE
     int S2FSBlock::DataAppend(const char *data, uint64_t len)
     {
         WriteLock();
+        auto start = std::chrono::duration_cast<std::chrono::microseconds>
+                    (std::chrono::system_clock::now().time_since_epoch()).count();
         LivenessCheck();
         auto inode = this;
         S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
@@ -344,51 +348,34 @@ namespace ROCKSDB_NAMESPACE
             inodes.push_back(inode);
         }
 
-        segment->WriteLock();
-        auto data_block = segment->GetBlockByOffset(addr_2_inseg_offset(inode->Offsets().back()));
-        segment->Unlock();
-
+        S2FSBlock *data_block;
         uint64_t io_num = 0;
         while (io_num < len)
         {
-            if (data_block->ContentSize() >= S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
+            int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + io_num, len - io_num, &data_block);
+            // this segment is full, allocate new in next segment
+            if (tmp < 0)
             {
-                int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + io_num, len - io_num, &data_block);
-                // this segment is full, allocate new in next segment
+                segment = _fs->FindNonFullSegment();
+                if (!segment)
+                {
+                    return -1;
+                }
+
+                S2FSBlock *res;
+                tmp = segment->AllocateNew("", ITYPE_FILE_INODE, &res, NULL);
                 if (tmp < 0)
                 {
-                    segment = _fs->FindNonFullSegment();
-                    if (!segment)
-                    {
-                        return -1;
-                    }
-
-                    S2FSBlock *res;
-                    tmp = segment->AllocateNew("", ITYPE_FILE_INODE, data + io_num, len - io_num, &res, NULL);
-                    if (tmp < 0)
-                    {
-                        return -1;
-                    }
-                    inode->Next(res->GlobalOffset());
-                    res->Prev(inode->GlobalOffset());
-                    res->WriteLock();
-                    inodes.push_back(res);
-                    inode = res;
-                    io_num += tmp;
-                    break;
+                    return -1;
                 }
-                else
-                    io_num += tmp;
+                inode->Next(res->GlobalOffset());
+                res->Prev(inode->GlobalOffset());
+                res->WriteLock();
+                inodes.push_back(res);
+                inode = res;
             }
             else
-            {
-                uint64_t left = S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) - data_block->ContentSize();
-                uint64_t to_copy = (len > left ? left : len);
-                memcpy(data_block->Content() + data_block->ContentSize(), data + io_num, to_copy);
-                data_block->AddContentSize(to_copy);
-                io_num += to_copy;
-                Flush();
-            }
+                io_num += tmp;
         }
 
         while (!inodes.empty())
@@ -396,6 +383,9 @@ namespace ROCKSDB_NAMESPACE
             inodes.back()->Unlock();
             inodes.pop_back();
         }
+        auto end = std::chrono::duration_cast<std::chrono::microseconds>
+                    (std::chrono::system_clock::now().time_since_epoch()).count();
+        std::cout<<"DataAppend elapsed time is " << ((end -  start)/1000) << " milliseconds \n";
         return 0;
     }
 
@@ -412,7 +402,7 @@ namespace ROCKSDB_NAMESPACE
             auto s = _fs->ReadSegment(addr_2_segment(off));
             auto data_block = s->GetBlockByOffset(addr_2_inseg_offset(off));
 
-            if (cur_off + S2FSBlock::MaxDataSize(ITYPE_FILE_INODE) > offset)
+            if (cur_off + data_block->ContentSize() > offset)
             {
                 uint64_t in_block_off = (cur_off > offset ? 0 : offset - cur_off), max_readable = data_block->ContentSize() - in_block_off;
                 
@@ -424,7 +414,7 @@ namespace ROCKSDB_NAMESPACE
                 cur_off += to_read;
             }
             else
-                cur_off += S2FSBlock::MaxDataSize(ITYPE_FILE_INODE);
+                cur_off += data_block->ContentSize();
         }
 
         if (read_num < n && _next)
@@ -507,10 +497,10 @@ namespace ROCKSDB_NAMESPACE
                 {
                     attr->Name(target);
                     s->OnRename(src, target);
-                    s->Unlock();
-                    data->Flush();
+                    s->Flush(addr_2_inseg_offset(data->GlobalOffset()));
                     data->Unlock();
                     Unlock();
+                    s->Unlock();
                     return;
                 }
             }
@@ -531,29 +521,10 @@ namespace ROCKSDB_NAMESPACE
         Unlock();
     }
 
-    int S2FSBlock::Flush()
-    {
-        char buf[S2FSBlock::Size()] = {0};
-        Serialize(buf);
-
-        int ret = zns_udevice_write(_fs->_zns_dev, _global_offset, buf, S2FSBlock::Size());
-        if (ret)
-        {
-            std::cout << "Error: nvme write error at: " << _global_offset << " ret:" << ret << " during S2FSBlock::Flush."
-                      << "\n";
-            return -1;
-        }
-        return 0;
-    }
-
     int S2FSBlock::Offload()
     {
         if (!_loaded)
             return 0;
-
-        int ret = Flush();
-        if (ret)
-            return ret;
 
         _loaded = false;
         switch (_type)
@@ -575,8 +546,29 @@ namespace ROCKSDB_NAMESPACE
 
         case ITYPE_FILE_DATA:
             free(_content);
-            _content = 0; _content_size = 0;
+            _content = 0;
             break;
+
+        default:
+            break;
+        }
+
+        return 0;
+    }
+
+    uint64_t S2FSBlock::ActualSize()
+    {
+        switch (_type)
+        {
+        case ITYPE_DIR_DATA:
+            return _content_size + 9;
+
+        case ITYPE_DIR_INODE:
+        case ITYPE_FILE_INODE:
+            return S2FSBlock::Size();
+
+        case ITYPE_FILE_DATA:
+            return _content_size + 9;
 
         default:
             break;
@@ -589,7 +581,7 @@ namespace ROCKSDB_NAMESPACE
     {
         if (type == ITYPE_DIR_INODE)
         {
-            return S2FSBlock::Size() - 1;
+            return S2FSBlock::Size() - 9;
         }
         else if (type == ITYPE_FILE_INODE)
         {

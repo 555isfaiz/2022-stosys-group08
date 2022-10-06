@@ -92,7 +92,7 @@ namespace ROCKSDB_NAMESPACE
             if (!segm_start && s->IsEmpty())
             {
                 S2FSBlock *b;
-                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, 0, &b, NULL);
+                s->AllocateNew("/", ITYPE_DIR_INODE, &b, NULL);
             }
 
             if (!s->IsEmpty())
@@ -155,7 +155,7 @@ namespace ROCKSDB_NAMESPACE
     start:
         S2FSSegment *seg = ReadSegment(_wp_end);
         seg->ReadLock();
-        if (seg->GetEmptyBlockNum() >= 2)
+        if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
         {
             seg->Unlock();
             return seg;
@@ -172,7 +172,7 @@ namespace ROCKSDB_NAMESPACE
         {
             seg = ReadSegment(i);
             seg->ReadLock();
-            if (seg->GetEmptyBlockNum() >= 2)
+            if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
             {
                 seg->Unlock();
                 return seg;
@@ -342,7 +342,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock *new_inode;
         while (s = FindNonFullSegment())
         {
-            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
+            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
             {
                 allocated = true;
                 break;
@@ -430,7 +430,7 @@ namespace ROCKSDB_NAMESPACE
             bool allocated = false;
             while (s = FindNonFullSegment())
             {
-                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, 0, &res, inode) >= 0)
+                if (s->AllocateNew(name, ITYPE_DIR_INODE, &res, inode) >= 0)
                 {
                     allocated = true;
                     break;
@@ -576,7 +576,7 @@ namespace ROCKSDB_NAMESPACE
             bool allocated = false;
             while (s = FindNonFullSegment())
             {
-                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
+                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
                 {
                     allocated = true;
                     break;

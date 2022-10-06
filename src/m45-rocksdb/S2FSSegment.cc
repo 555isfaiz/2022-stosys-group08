@@ -3,9 +3,9 @@
 namespace ROCKSDB_NAMESPACE
 {
     S2FSSegment::S2FSSegment(uint64_t addr)
-    : _addr_start(addr)
+    : _addr_start(addr),
+    _cur_size(S2FSBlock::Size())
     {
-        _blocks.resize(_fs->_zns_dev_ex->blocks_per_zone);
         // hope this would always be 1...
         _reserve_for_inode = INODE_MAP_ENTRY_LENGTH * _fs->_zns_dev_ex->blocks_per_zone / 2 / S2FSBlock::Size() + 1;
     }
@@ -14,56 +14,33 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSSegment::~S2FSSegment()
     {
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        for (auto p : _blocks)
         {
-            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+            if (!p.second || p.second == (S2FSBlock *)1)
                 continue;
-            delete _blocks.at(i);
+            delete p.second;
         }
-    }
-
-    uint64_t S2FSSegment::GetEmptyBlock()
-    {
-        // skip the first one. that's for inode map
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
-        {
-            if (_blocks.at(i) == NULL)
-            {
-                return block_2_inseg_offset(i);
-            }
-        }
-        return 0;
-    }
-
-    uint64_t S2FSSegment::GetEmptyBlockNum()
-    {
-        uint64_t num = 0;
-        // skip the first one. that's for inode map
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
-        {
-            if (_blocks.at(i) == NULL)
-            {
-                num++;
-            }
-        }
-        return num;
     }
 
     S2FSBlock *S2FSSegment::GetBlockByOffset(uint64_t offset)
     {
+        if (!map_contains(_blocks, offset))
+            return NULL;
+
         S2FSBlock *block = NULL;
-        block = _blocks.at(addr_2_block(offset));
+        block = _blocks.at(offset);
         // block is occupied, but not present in memory
         if ((uint64_t)block == 1)
         {
             block = new S2FSBlock;
-            _blocks[addr_2_block(offset)] = block;
+            _blocks[offset] = block;
         }
 
         if (block && !block->Loaded())
         {
-            char buf[S2FSBlock::Size()] = {0};
-            int ret = zns_udevice_read(_fs->_zns_dev, offset + _addr_start, buf, S2FSBlock::Size());
+            auto actual_size = round_up(block->ActualSize(), S2FSBlock::Size());
+            char buf[actual_size] = {0};
+            int ret = zns_udevice_read(_fs->_zns_dev, offset + _addr_start, buf, actual_size);
             if (ret)
             {
                 std::cout << "Error: reading block at: " << offset + _addr_start << " during S2FSSegment::LookUp."
@@ -98,7 +75,7 @@ namespace ROCKSDB_NAMESPACE
         return NULL;
     }
 
-    int64_t S2FSSegment::AllocateNew(const std::string &name, INodeType type, const char *data, uint64_t size, S2FSBlock **res, S2FSBlock *parent_dir)
+    int64_t S2FSSegment::AllocateNew(const std::string &name, INodeType type, S2FSBlock **res, S2FSBlock *parent_dir)
     {
         if (name.length() > MAX_NAME_LENGTH)
             return -1;
@@ -109,64 +86,40 @@ namespace ROCKSDB_NAMESPACE
             return -1;
         }
 
+        if (_cur_size + S2FSBlock::Size() >= S2FSSegment::Size())
+        {
+            return -1;
+        }
+
         WriteLock();
         uint64_t allocated = 0;
         S2FSBlock *inode;
         INodeType data_type;
         S2FSFileAttr fa;
-        // need at least 2 blocks. one for inode, one for data.
-        if (GetEmptyBlockNum() >= 2)
+
+        inode = new S2FSBlock(type, _addr_start, 0);
+        inode->GlobalOffset(_addr_start + _cur_size);
+        _blocks[_cur_size] = inode;
+        _name_2_inode[name] = inode->ID();
+        _inode_map[inode->ID()] = _cur_size;
+        _cur_size += S2FSBlock::Size();
+
+        if (type == ITYPE_DIR_INODE)
+            inode->Name(name);
+
+        if (parent_dir)
         {
-            inode = new S2FSBlock(type, _addr_start);
-            uint64_t empty = GetEmptyBlock();
-            inode->GlobalOffset(_addr_start + empty);
-            _blocks[addr_2_block(empty)] = inode;
-            _name_2_inode[name] = inode->ID();
-            _inode_map[inode->ID()] = empty;
-
-            if (type == ITYPE_DIR_INODE)
-                inode->Name(name);
-
-            data_type = (type == ITYPE_DIR_INODE ? ITYPE_DIR_DATA : ITYPE_FILE_DATA);
-
-            if (parent_dir)
-            {
-                fa.Name(name)
+            fa.Name(name)
                 ->CreateTime(0)
                 ->IsDir(type == ITYPE_DIR_INODE)
                 ->InodeID(inode->ID())
                 ->Offset(inode->GlobalOffset())
                 ->Size(0);
-            }
         }
 
-        if (inode)
-        {
-            *res = inode;
-            if (size != 0)
-            {
-                uint64_t to_allocate = round_up(size, S2FSBlock::MaxDataSize(inode->Type()));
-                uint64_t empty = GetEmptyBlock();
-                while (empty && allocated < to_allocate)
-                {
-                    inode->AddOffset(empty + Addr());
-                    S2FSBlock *data_block = new S2FSBlock(data_type, _addr_start);
-                    data_block->GlobalOffset(_addr_start + empty);
-                    _blocks[addr_2_block(empty)] = data_block;
-                    uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));
-                    if (data)
-                    {
-                        memcpy(data_block->Content(), data + allocated, to_copy);
-                        data_block->AddContentSize(to_copy);
-                    }
-                    allocated += to_copy;
-                    empty = GetEmptyBlock();
-                }
-            }
-        }
-        
-        Flush();
+        *res = inode;
 
+        Flush(inode->GlobalOffset() - _addr_start);
         Unlock();
 
         // Do this after releasing the lock, otherwise deadlock happens
@@ -177,45 +130,39 @@ namespace ROCKSDB_NAMESPACE
 
     int64_t S2FSSegment::AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res)
     {
-        WriteLock();
         if (!map_contains(_inode_map, inode_id))
         {
             return -1;
         }
 
-        uint64_t allocated = 0;
-        auto inode = GetBlockByOffset(_inode_map[inode_id]);
-        uint64_t to_allocate = round_up(size, S2FSBlock::MaxDataSize(inode->Type()));
-        uint64_t empty = GetEmptyBlock();
-        if (!empty)
-            return -1;  // this segment is full
-
-        while (empty && allocated < to_allocate)
+        if (_cur_size + 9>= S2FSSegment::Size())
         {
-            inode->AddOffset(empty + Addr());
-            S2FSBlock *data_block = new S2FSBlock(type, _addr_start);
-            data_block->GlobalOffset(_addr_start + empty);
-            _blocks[addr_2_block(empty)] = data_block;
-            uint64_t to_copy = (S2FSBlock::MaxDataSize(inode->Type()) > size - allocated ? size - allocated : S2FSBlock::MaxDataSize(inode->Type()));
-            if (data)
-            {
-                memcpy(data_block->Content(), data + allocated, to_copy);
-                data_block->AddContentSize(to_copy);
-            }
-            allocated += S2FSBlock::MaxDataSize(inode->Type());
-            *res = data_block;
-            empty = GetEmptyBlock();
+            return -1;
         }
 
-        Flush();
+        WriteLock();
+        auto inode = GetBlockByOffset(_inode_map[inode_id]);
+        uint64_t to_copy = (size > (S2FSSegment::Size() - _cur_size - 9) ? (S2FSSegment::Size() - _cur_size - 9) : size);
+        inode->AddOffset(_cur_size + Addr());
+        S2FSBlock *data_block = new S2FSBlock(type, _addr_start, to_copy);
+        data_block->GlobalOffset(_addr_start + _cur_size);
+        _blocks[_cur_size] = data_block;
+        if (data)
+        {
+            memcpy(data_block->Content(), data, to_copy);
+        }
+        _cur_size += to_copy + 9;
+        *res = data_block;
+
+        Flush(data_block->GlobalOffset() - _addr_start);
         Unlock();
-        return allocated;
+        return to_copy;
     }
 
     int S2FSSegment::RemoveINode(uint64_t inode_id)
     {
-        _blocks[addr_2_block(_inode_map[inode_id])] = NULL;
-        _inode_map[inode_id] = 0;
+        _blocks[_inode_map[inode_id]] = NULL;
+        _inode_map.erase(inode_id);
         for (auto p : _name_2_inode)
         {
             if (p.second == inode_id)
@@ -280,7 +227,7 @@ namespace ROCKSDB_NAMESPACE
 
     int S2FSSegment::Flush()
     {
-        char buf[S2FSBlock::Size()] = {0};
+        char buf[S2FSSegment::Size()] = {0};
         uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
         for (auto iter = _inode_map.begin(); iter != _inode_map.end() && off < size; off += INODE_MAP_ENTRY_LENGTH, iter++)
         {
@@ -288,26 +235,78 @@ namespace ROCKSDB_NAMESPACE
             *(uint64_t *)(buf + off + 8) = iter->second;
         }
 
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        for (auto p : _blocks)
         {
-            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+            if (!p.second || p.second == (S2FSBlock *)1)
                 continue;
             
-            int ret = _blocks.at(i)->Flush();
+            size += p.second->Serialize(buf + size);
+        }
+
+        size = round_up(size, S2FSBlock::Size());
+        for (size_t i = _addr_start; i < size; i += S2FSBlock::Size())
+        {
+            int ret = zns_udevice_write(_fs->_zns_dev, i, buf + i - _addr_start, S2FSBlock::Size());
             if (ret)
-                return ret;
+            {
+                std::cout << "Error: nvme write error at: " << i << " ret:" << ret << " during S2FSSegment::Flush."
+                        << "\n";
+                return -1;
+            }
         }
         return 0;
     }
 
+    int S2FSSegment::Flush(uint64_t in_seg_off)
+    {
+        uint64_t write_start = in_seg_off / S2FSBlock::Size() * S2FSBlock::Size(), write_end = round_up(in_seg_off + _blocks[in_seg_off]->ActualSize(), S2FSBlock::Size());
+        uint64_t ptr = 0, total_size = write_end - write_start;
+        char buf[total_size] = {0};
+        char tmp[S2FSSegment::Size()] = {0};
+        auto iter = _blocks.find(in_seg_off);
+        while (iter->first > write_start) 
+            iter--;
+        while (iter->first < write_end && iter != _blocks.end())
+        {
+            if (!iter->second)
+            {
+                auto itert = iter;
+                itert++;
+                ptr += (itert->first - iter->first);
+                iter++;
+                continue;
+            }
+
+            auto len = iter->second->Serialize(tmp);
+            uint64_t skip = (write_start > iter->first ? write_start - iter->first : 0);
+            uint64_t drop = (write_end < iter->first + len ? iter->first + len - write_end : 0);
+            memcpy(buf + ptr, tmp + skip, len - skip - drop);
+            ptr += len - skip - drop;
+            iter++;
+        }
+
+        for (size_t i = write_start; i < write_end; i += S2FSBlock::Size())
+        {
+            int ret = zns_udevice_write(_fs->_zns_dev, i, buf + i - write_start, S2FSBlock::Size());
+            if (ret)
+            {
+                std::cout << "Error: nvme write error at: " << i << " ret:" << ret << " during S2FSSegment::Flush."
+                        << "\n";
+                return -1;
+            }
+        }
+        return write_end - write_start;
+    }
+
     int S2FSSegment::Offload()
     {
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        Flush();
+        for (auto p : _blocks)
         {
-            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+            if (!p.second || p.second == (S2FSBlock *)1)
                 continue;
             
-            int ret = _blocks.at(i)->Offload();
+            int ret = p.second->Offload();
             if (ret)
                 return ret;
         }
@@ -318,84 +317,85 @@ namespace ROCKSDB_NAMESPACE
     {
         WriteLock();
 
-        _fs->LoadSegmentFromDisk(_addr_start);
-        std::vector<S2FSBlock *> blocks(_blocks.size());
-        uint64_t ptr = _reserve_for_inode;
-        bool changed = false;
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
-        {
-            auto block = _blocks[i];
-            if (!block || block == (S2FSBlock *)1)
-                continue;
+//         _fs->LoadSegmentFromDisk(_addr_start);
+//         std::unordered_map<uint64_t, S2FSBlock *> blocks;
+//         uint64_t ptr = _reserve_for_inode;
+//         bool changed = false;
+//         for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+//         {
+//             auto block = _blocks[i];
+//             if (!block || block == (S2FSBlock *)1)
+//                 continue;
 
-            blocks[ptr] = block;
-            if (ptr != i)
-                changed = true;
+//             blocks[ptr] = block;
+//             if (ptr != i)
+//                 changed = true;
             
-            uint64_t new_inseg_off = block_2_inseg_offset(ptr);
-            ptr++;
-            if (map_contains(_inode_map, block->ID()))
-            {
-                _inode_map[block->ID()] = new_inseg_off;
-            }
+//             uint64_t new_inseg_off = block_2_inseg_offset(ptr);
+//             ptr++;
+//             if (map_contains(_inode_map, block->ID()))
+//             {
+//                 _inode_map[block->ID()] = new_inseg_off;
+//             }
 
-            block->WriteLock();
-            // Update _prev and _next for dir/file inodes if needed...
-            if (block->Type() == ITYPE_DIR_INODE || block->Type() == ITYPE_FILE_INODE)
-            {
-                if (block->Next())
-                {
-                    auto s = _fs->ReadSegment(addr_2_segment(block->Next()));
-                    s->WriteLock();
-                    auto next_block = s->GetBlockByOffset(addr_2_inseg_offset(block->Next()));
-                    next_block->WriteLock();
-                    next_block->Prev(_addr_start + new_inseg_off);
-                    next_block->Unlock();
-                    s->Unlock();
-                }
+//             block->WriteLock();
+//             // Update _prev and _next for dir/file inodes if needed...
+//             if (block->Type() == ITYPE_DIR_INODE || block->Type() == ITYPE_FILE_INODE)
+//             {
+//                 if (block->Next())
+//                 {
+//                     auto s = _fs->ReadSegment(addr_2_segment(block->Next()));
+//                     s->WriteLock();
+//                     auto next_block = s->GetBlockByOffset(addr_2_inseg_offset(block->Next()));
+//                     next_block->WriteLock();
+//                     next_block->Prev(_addr_start + new_inseg_off);
+//                     next_block->Unlock();
+//                     s->Unlock();
+//                 }
 
-                if (block->Prev())
-                {
-                    auto s = _fs->ReadSegment(addr_2_segment(block->Next()));
-                    s->WriteLock();
-                    auto prev_block = s->GetBlockByOffset(addr_2_inseg_offset(block->Prev()));
-                    prev_block->WriteLock();
-                    prev_block->Next(_addr_start + new_inseg_off);
-                    prev_block->Unlock();
-                    s->Unlock();
-                }
-            }
+//                 if (block->Prev())
+//                 {
+//                     auto s = _fs->ReadSegment(addr_2_segment(block->Next()));
+//                     s->WriteLock();
+//                     auto prev_block = s->GetBlockByOffset(addr_2_inseg_offset(block->Prev()));
+//                     prev_block->WriteLock();
+//                     prev_block->Next(_addr_start + new_inseg_off);
+//                     prev_block->Unlock();
+//                     s->Unlock();
+//                 }
+//             }
 
-            // change inode->_offsets if needed...
-            uint64_t old_off = _addr_start + block_2_inseg_offset(i);
-            for (auto b : _blocks)
-            {
-                if (b == block)
-                    continue;
+//             // change inode->_offsets if needed...
+//             uint64_t old_off = _addr_start + block_2_inseg_offset(i);
+//             for (auto p : _blocks)
+//             {
+//                 auto b = p.second;
+//                 if (b == block)
+//                     continue;
                 
-                b->WriteLock();
-                auto offsets = b->Offsets();
-                for (auto iter = offsets.begin(); iter != offsets.end(); iter++)
-                {
-                    if (*iter == old_off)
-                    {
-                        offsets.erase(iter);
-                        offsets.insert(iter, _addr_start + new_inseg_off);
-                        b->Unlock();
-                        goto done;
-                    }
-                }
-                b->Unlock();
-            }
-done:
-            block->Unlock();
-        }
+//                 b->WriteLock();
+//                 auto offsets = b->Offsets();
+//                 for (auto iter = offsets.begin(); iter != offsets.end(); iter++)
+//                 {
+//                     if (*iter == old_off)
+//                     {
+//                         offsets.erase(iter);
+//                         offsets.insert(iter, _addr_start + new_inseg_off);
+//                         b->Unlock();
+//                         goto done;
+//                     }
+//                 }
+//                 b->Unlock();
+//             }
+// done:
+//             block->Unlock();
+//         }
 
-        if (changed)
-        {
-            _blocks = blocks;
-            Flush();
-        }
+//         if (changed)
+//         {
+//             _blocks = blocks;
+//             Flush();
+//         }
 
         Offload();
         Unlock();
@@ -415,7 +415,7 @@ done:
         }
     }
 
-    void S2FSSegment::Serialize(char *buffer)
+    uint64_t S2FSSegment::Serialize(char *buffer)
     {
         ReadLock();
         uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
@@ -425,31 +425,34 @@ done:
             *(uint64_t *)(buffer + off + 8) = iter->second;
         }
 
-        for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
+        uint64_t ptr = size;
+        for (auto p : _blocks)
         {
-            if (!_blocks.at(i) || _blocks.at(i) == (S2FSBlock *)1)
+            if (!p.second || p.second == (S2FSBlock *)1)
                 continue;
-            _blocks.at(i)->Serialize(buffer + i * S2FSBlock::Size());
+            ptr += p.second->Serialize(buffer + ptr);
         }
         Unlock();
+        return S2FSSegment::Size();
     }
 
-    void S2FSSegment::Deserialize(char *buffer)
+    uint64_t S2FSSegment::Deserialize(char *buffer)
     {
         WriteLock();
 
         Preload(buffer);
 
+        uint64_t ptr = _reserve_for_inode * S2FSBlock::Size();
         for (size_t i = _reserve_for_inode; i < _blocks.size(); i++)
         {
             S2FSBlock *block;
-            if (_blocks.at(i) && _blocks.at(i) != (S2FSBlock *)1)
+            if (_blocks.at(i))
                 block = _blocks.at(i);
             else
-                block = new S2FSBlock;
+                break;
 
             block->WriteLock();
-            block->Deserialize(buffer + i * S2FSBlock::Size());
+            ptr += block->Deserialize(buffer + ptr);
             block->Unlock();
 
             if (block->Type() == 0)
@@ -457,8 +460,8 @@ done:
             else
             {
                 block->SegmentAddr(_addr_start);
-                block->GlobalOffset(_addr_start + i * S2FSBlock::Size());
-                _blocks[i] = block;
+                block->GlobalOffset(_addr_start + ptr);
+                _blocks[ptr] = block;
                 if (block->Type() == ITYPE_DIR_DATA)
                 {
                     for (auto fa : block->FileAttrs())
@@ -475,6 +478,8 @@ done:
                 }
             }
         }
+        _cur_size = ptr;
         Unlock();
+        return S2FSSegment::Size();
     }
 }
