@@ -141,12 +141,12 @@ namespace ROCKSDB_NAMESPACE
         *res = inode;
         inode->Serialize(_buffer + inode->GlobalOffset() - _addr_start);
 
-        FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
-        args->s = this;
-        args->off = inode->GlobalOffset() - _addr_start;
-        // Flush(inode->GlobalOffset() - _addr_start);
+        // FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
+        // args->s = this;
+        // args->off = inode->GlobalOffset() - _addr_start;
+        Flush(inode->GlobalOffset() - _addr_start);
         Unlock();
-        pool_exec(_fs->_thread_pool, FlushWarpper, args);
+        // pool_exec(_fs->_thread_pool, FlushWarpper, args);
 
         // Do this after releasing the lock, otherwise deadlock happens
         if (inode && parent_dir)
@@ -186,12 +186,12 @@ namespace ROCKSDB_NAMESPACE
         inode->Serialize(_buffer + inode->GlobalOffset() - _addr_start);
         data_block->Serialize(_buffer + data_block->GlobalOffset() - _addr_start);
 
-        FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
-        args->s = this;
-        args->off = data_block->GlobalOffset() - _addr_start;
-        // Flush(data_block->GlobalOffset() - _addr_start);
+        // FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
+        // args->s = this;
+        // args->off = data_block->GlobalOffset() - _addr_start;
+        Flush(data_block->GlobalOffset() - _addr_start);
         Unlock();
-        pool_exec(_fs->_thread_pool, FlushWarpper, args);
+        // pool_exec(_fs->_thread_pool, FlushWarpper, args);
         return to_copy;
     }
 
