@@ -42,6 +42,8 @@ namespace ROCKSDB_NAMESPACE
         for (uint32_t i = 0; i < gc_arg->seg_num; i++)
         {
             auto s = gc_arg->fs->ReadSegment(i * S2FSSegment::Size());
+            if (!s)
+                continue;
             if (now - s->LastModify() > 300000000)  // 5 min
             {
                 s->OnGC();
@@ -179,6 +181,8 @@ namespace ROCKSDB_NAMESPACE
     {
         uint64_t segm_start = segment_2_addr(addr_2_segment(from));
         S2FSSegment *s = _cache[segm_start];
+        if (!s)
+            return s;
         char buf[S2FSSegment::Size()] = {0};
 
         int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSSegment::Size());
