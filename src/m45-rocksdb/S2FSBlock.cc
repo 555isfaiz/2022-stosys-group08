@@ -331,8 +331,6 @@ namespace ROCKSDB_NAMESPACE
     int S2FSBlock::DataAppend(const char *data, uint64_t len)
     {
         WriteLock();
-        auto start = std::chrono::duration_cast<std::chrono::microseconds>
-                    (std::chrono::system_clock::now().time_since_epoch()).count();
         LivenessCheck();
         auto inode = this;
         S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
@@ -383,9 +381,6 @@ namespace ROCKSDB_NAMESPACE
             inodes.back()->Unlock();
             inodes.pop_back();
         }
-        auto end = std::chrono::duration_cast<std::chrono::microseconds>
-                    (std::chrono::system_clock::now().time_since_epoch()).count();
-        std::cout<<"DataAppend elapsed time is " << ((end -  start)/1000) << " milliseconds \n";
         return 0;
     }
 
