@@ -7,6 +7,7 @@
 #include "rocksdb/status.h"
 #include "S2FileSystem.h"
 #include "my_thread_pool.h"
+#include "utils.h"
 
 #include <list>
 #include <atomic>
@@ -143,7 +144,7 @@ namespace ROCKSDB_NAMESPACE
         }
 
         // Should followed by Deserialize()
-        S2FSBlock(){}
+        S2FSBlock() : _loaded(false) {}
         ~S2FSBlock();
 
         uint64_t Serialize(char *buffer);
@@ -160,7 +161,7 @@ namespace ROCKSDB_NAMESPACE
         inline uint64_t ID()                                    { return _id; }
         inline const std::string& Name()                        { return _name; }
         inline S2FSBlock* Name(const std::string& name)         { _name = name; return this; }
-        inline const std::list<uint64_t>& Offsets()             { return _offsets; }
+        inline std::list<uint64_t>& Offsets()                   { return _offsets; }
         inline const std::list<S2FSFileAttr*>& FileAttrs()      { return _file_attrs; }
         inline void AddFileAttr(S2FSFileAttr &fa)               
         {
@@ -174,6 +175,7 @@ namespace ROCKSDB_NAMESPACE
             _file_attrs.push_back(_fa);
         }
         inline char* Content()                                  { return _content; }
+        inline void Content(char *content)                      { _content = content; }
         inline uint64_t ContentSize()                           { return _content_size; }
         inline void AddContentSize(uint64_t to_add)             { _content_size += to_add; }
         inline void SetContentSize(uint64_t to_set)             { _content_size = to_set; }
@@ -215,6 +217,7 @@ namespace ROCKSDB_NAMESPACE
         uint32_t _reserve_for_inode;
         uint64_t _cur_size;
         char *_buffer;
+        uint64_t _last_modify;
     public:
         S2FSSegment(uint64_t addr);
         ~S2FSSegment();
@@ -253,6 +256,8 @@ namespace ROCKSDB_NAMESPACE
         inline uint64_t Addr() { return _addr_start; }
         inline bool IsEmpty() { return _inode_map.empty(); }
         inline char *Buffer() { return _buffer; }
+        inline uint64_t LastModify() { return _last_modify; }
+        inline void LastModify(uint64_t last_modify) { _last_modify = last_modify; }
 
         static uint64_t Size();
     };

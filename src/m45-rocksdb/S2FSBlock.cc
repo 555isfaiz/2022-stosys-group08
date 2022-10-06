@@ -151,6 +151,9 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::Deserialize(char *buffer)
     {
+        if (_loaded)
+            return ActualSize();
+
         uint8_t type = *buffer >> 4;
         _loaded = true;
         switch (type)
@@ -160,7 +163,7 @@ namespace ROCKSDB_NAMESPACE
             return DeserializeFileInode(buffer);
         case 2:
             _type = ITYPE_FILE_DATA;
-            _content = (char *)calloc(Size() - 1, sizeof(char));
+            // _content = (char *)calloc(Size() - 1, sizeof(char));
             _content_size = *(uint64_t *)(buffer + 1);
             memcpy(_content, buffer + 9, _content_size);
             return _content_size + 9;
@@ -525,7 +528,7 @@ namespace ROCKSDB_NAMESPACE
         {
             for (size_t size = _file_attrs.size(); size > 0; size--)
             {
-                free(_file_attrs.front());
+                delete _file_attrs.front();
                 _file_attrs.pop_front();
             }
             break;
@@ -537,7 +540,7 @@ namespace ROCKSDB_NAMESPACE
             break;
 
         case ITYPE_FILE_DATA:
-            free(_content);
+            // free(_content);
             _content = 0;
             break;
 

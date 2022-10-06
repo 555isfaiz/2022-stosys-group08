@@ -32,6 +32,11 @@ SOFTWARE.
 
 namespace ROCKSDB_NAMESPACE
 {
+    void *GCWrapper(void *)
+    {
+
+    }
+
     S2FileSystem::S2FileSystem(std::string uri_db_path, bool debug)
     {
         FileSystem::Default();
