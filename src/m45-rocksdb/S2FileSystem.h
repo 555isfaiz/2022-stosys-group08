@@ -29,6 +29,7 @@ SOFTWARE.
 #include "rocksdb/status.h"
 #include "S2FSImpl.h"
 #include "S2FSCommon.h"
+#include "my_thread_pool.h"
 
 #include <zns_device.h>
 #include <iostream>
@@ -44,6 +45,14 @@ namespace ROCKSDB_NAMESPACE
     class S2FSObject;
     class S2FSBlock;
     class S2FSSegment;
+    class S2FileSystem;
+
+    struct GCWrapperArg
+    {
+        S2FileSystem *fs;
+        uint64_t seg_start;
+        uint64_t seg_num;
+    };
 
     class S2FileSystem : public FileSystem
     {
@@ -150,6 +159,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSSegment *LoadSegmentFromDisk();
         // Read a segment regardless of whether it is in cache or not
         S2FSSegment *LoadSegmentFromDisk(uint64_t from);
+        my_thread_pool *_thread_pool;
 
     private:
         std::string _uri;
@@ -161,6 +171,8 @@ namespace ROCKSDB_NAMESPACE
         std::atomic<int> _seq_id{};
         std::string _name;
         std::stringstream _ss;
+
+        struct GCWrapperArg *_gc_args[4];
 
         // Set res to the target file inode or its parent dir inode, depending on the set_parent flag
         IOStatus _FileExists(const std::string &fname, bool set_parent, S2FSBlock **res);

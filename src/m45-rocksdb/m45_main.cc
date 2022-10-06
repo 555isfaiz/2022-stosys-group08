@@ -328,7 +328,7 @@ int main(int argc, char **argv) {
     cout << "database(s) closed, test is done OK " << endl;
     end = microseconds_since_epoch();
     std::cout<<"====================================================================\n";
-    std::cout<<"stosys-stats] The elapsed time is " << ((end -  start)/1000) << " milliseconds \n";
+    std::cout<<"[stosys-stats] The elapsed time is " << ((end -  start)/1000) << " milliseconds \n";
     std::cout<<"====================================================================\n";
     return 0;
 }

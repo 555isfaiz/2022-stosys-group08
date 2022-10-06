@@ -32,6 +32,26 @@ SOFTWARE.
 
 namespace ROCKSDB_NAMESPACE
 {
+    void *GCWrapper(void *args)
+    {
+        struct GCWrapperArg *gc_arg = (struct GCWrapperArg *)args;
+        if (gc_arg->fs == NULL)
+            return (void *)0;
+
+        auto now = microseconds_since_epoch();
+        for (uint32_t i = 0; i < gc_arg->seg_num; i++)
+        {
+            auto s = gc_arg->fs->ReadSegment(i * S2FSSegment::Size());
+            if (!s)
+                continue;
+            if (now - s->LastModify() > 300000000)  // 5 min
+            {
+                s->OnGC();
+            }
+        }
+        return (void *)1;
+    }
+
     S2FileSystem::S2FileSystem(std::string uri_db_path, bool debug)
     {
         FileSystem::Default();
@@ -62,6 +82,7 @@ namespace ROCKSDB_NAMESPACE
             std::cout << "Error: ret " << ret << "\n";
         }
         free(params.name);
+        pool_init(&_thread_pool, 4);
         this->_zns_dev_ex = (struct zns_device_extra_info *)this->_zns_dev->_private;
         assert(ret == 0);
         assert(this->_zns_dev->lba_size_bytes != 0);
@@ -92,16 +113,40 @@ namespace ROCKSDB_NAMESPACE
             if (!segm_start && s->IsEmpty())
             {
                 S2FSBlock *b;
-                s->AllocateNew("/", ITYPE_DIR_INODE, NULL, 0, &b, NULL);
+                s->AllocateNew("/", ITYPE_DIR_INODE, &b, NULL);
             }
 
             if (!s->IsEmpty())
                 _wp_end = segm_start;
+
+            s->LastModify(microseconds_since_epoch());
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            struct GCWrapperArg *arg = (struct GCWrapperArg *)calloc(1, sizeof(struct GCWrapperArg));
+            _gc_args[i] = arg;
+            arg->fs = this;
+            auto each = _cache.size() / 4;
+            if (i == 3)
+                arg->seg_num = each;
+            else
+                arg->seg_num = _cache.size() - each * 3;
+            
+            arg->seg_start = i * each * S2FSSegment::Size();
+
+            pool_exec(_thread_pool, GCWrapper, arg);
         }
     }
 
     S2FileSystem::~S2FileSystem()
     {
+        for (int i = 0; i < 4; i++)
+        {
+            struct GCWrapperArg *arg = _gc_args[i];
+            arg->fs = NULL;
+        }
+
         for (auto p : _cache)
         {
             delete p.second;
@@ -136,6 +181,8 @@ namespace ROCKSDB_NAMESPACE
     {
         uint64_t segm_start = segment_2_addr(addr_2_segment(from));
         S2FSSegment *s = _cache[segm_start];
+        if (!s)
+            return s;
         char buf[S2FSSegment::Size()] = {0};
 
         int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSSegment::Size());
@@ -155,7 +202,7 @@ namespace ROCKSDB_NAMESPACE
     start:
         S2FSSegment *seg = ReadSegment(_wp_end);
         seg->ReadLock();
-        if (seg->GetEmptyBlockNum() >= 2)
+        if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
         {
             seg->Unlock();
             return seg;
@@ -172,12 +219,13 @@ namespace ROCKSDB_NAMESPACE
         {
             seg = ReadSegment(i);
             seg->ReadLock();
-            if (seg->GetEmptyBlockNum() >= 2)
+            if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
             {
                 seg->Unlock();
                 return seg;
             }
             seg->Unlock();
+            seg->OnGC();
         }
 
         std::cout << "Disk full"
@@ -342,7 +390,7 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock *new_inode;
         while (s = FindNonFullSegment())
         {
-            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
+            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
             {
                 allocated = true;
                 break;
@@ -430,7 +478,7 @@ namespace ROCKSDB_NAMESPACE
             bool allocated = false;
             while (s = FindNonFullSegment())
             {
-                if (s->AllocateNew(name, ITYPE_DIR_INODE, NULL, 0, &res, inode) >= 0)
+                if (s->AllocateNew(name, ITYPE_DIR_INODE, &res, inode) >= 0)
                 {
                     allocated = true;
                     break;
@@ -576,7 +624,7 @@ namespace ROCKSDB_NAMESPACE
             bool allocated = false;
             while (s = FindNonFullSegment())
             {
-                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, NULL, S2FSBlock::MaxDataSize(ITYPE_FILE_INODE), &new_inode, inode) >= 0)
+                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
                 {
                     allocated = true;
                     break;
