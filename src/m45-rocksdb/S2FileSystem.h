@@ -45,6 +45,14 @@ namespace ROCKSDB_NAMESPACE
     class S2FSObject;
     class S2FSBlock;
     class S2FSSegment;
+    class S2FileSystem;
+
+    struct GCWrapperArg
+    {
+        S2FileSystem *fs;
+        uint64_t seg_start;
+        uint64_t seg_num;
+    };
 
     class S2FileSystem : public FileSystem
     {
@@ -163,6 +171,8 @@ namespace ROCKSDB_NAMESPACE
         std::atomic<int> _seq_id{};
         std::string _name;
         std::stringstream _ss;
+
+        struct GCWrapperArg *_gc_args[4];
 
         // Set res to the target file inode or its parent dir inode, depending on the set_parent flag
         IOStatus _FileExists(const std::string &fname, bool set_parent, S2FSBlock **res);

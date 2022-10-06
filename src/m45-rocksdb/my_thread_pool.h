@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 extern "C"
 {

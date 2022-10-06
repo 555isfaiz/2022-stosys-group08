@@ -31,6 +31,7 @@ extern "C"
                     pthread_mutex_unlock(&pool_mutex);
                     goto loop_start;
                 }
+                sleep(10);
             }
         }
 

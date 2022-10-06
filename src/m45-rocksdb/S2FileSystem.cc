@@ -32,9 +32,22 @@ SOFTWARE.
 
 namespace ROCKSDB_NAMESPACE
 {
-    void *GCWrapper(void *)
+    void *GCWrapper(void *args)
     {
+        struct GCWrapperArg *gc_arg = (struct GCWrapperArg *)args;
+        if (gc_arg->fs == NULL)
+            return (void *)0;
 
+        auto now = microseconds_since_epoch();
+        for (uint32_t i = 0; i < gc_arg->seg_num; i++)
+        {
+            auto s = gc_arg->fs->ReadSegment(i * S2FSSegment::Size());
+            if (now - s->LastModify() > 300000000)  // 5 min
+            {
+                s->OnGC();
+            }
+        }
+        return (void *)1;
     }
 
     S2FileSystem::S2FileSystem(std::string uri_db_path, bool debug)
@@ -103,11 +116,35 @@ namespace ROCKSDB_NAMESPACE
 
             if (!s->IsEmpty())
                 _wp_end = segm_start;
+
+            s->LastModify(microseconds_since_epoch());
+        }
+
+        for (int i = 0; i < 4; i++)
+        {
+            struct GCWrapperArg *arg = (struct GCWrapperArg *)calloc(1, sizeof(struct GCWrapperArg));
+            _gc_args[i] = arg;
+            arg->fs = this;
+            auto each = _cache.size() / 4;
+            if (i == 3)
+                arg->seg_num = each;
+            else
+                arg->seg_num = _cache.size() - each * 3;
+            
+            arg->seg_start = i * each * S2FSSegment::Size();
+
+            pool_exec(_thread_pool, GCWrapper, arg);
         }
     }
 
     S2FileSystem::~S2FileSystem()
     {
+        for (int i = 0; i < 4; i++)
+        {
+            struct GCWrapperArg *arg = _gc_args[i];
+            arg->fs = NULL;
+        }
+
         for (auto p : _cache)
         {
             delete p.second;
@@ -184,6 +221,7 @@ namespace ROCKSDB_NAMESPACE
                 return seg;
             }
             seg->Unlock();
+            seg->OnGC();
         }
 
         std::cout << "Disk full"

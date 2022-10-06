@@ -34,6 +34,7 @@ namespace ROCKSDB_NAMESPACE
 
         if (block && !block->Loaded())
         {
+            LastModify(microseconds_since_epoch());
             if (!_buffer)
                 _buffer = (char *)calloc(S2FSSegment::Size(), sizeof(char));
 
@@ -77,22 +78,6 @@ namespace ROCKSDB_NAMESPACE
         }
 
         return NULL;
-    }
-
-    struct FlushArgs
-    {
-        S2FSSegment *s;
-        uint64_t off = 0;
-    };
-
-    void *FlushWarpper(void *arg)
-    {
-        FlushArgs *aarg = (FlushArgs *)arg;
-        aarg->s->ReadLock();
-        aarg->s->Flush(aarg->off);
-        aarg->s->Unlock();
-        free(arg);
-        return (void *)NULL;
     }
 
     int64_t S2FSSegment::AllocateNew(const std::string &name, INodeType type, S2FSBlock **res, S2FSBlock *parent_dir)
@@ -144,12 +129,8 @@ namespace ROCKSDB_NAMESPACE
         *res = inode;
         inode->Serialize(_buffer + inode->GlobalOffset() - _addr_start);
 
-        // FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
-        // args->s = this;
-        // args->off = inode->GlobalOffset() - _addr_start;
         Flush(inode->GlobalOffset() - _addr_start);
         Unlock();
-        // pool_exec(_fs->_thread_pool, FlushWarpper, args);
 
         // Do this after releasing the lock, otherwise deadlock happens
         if (inode && parent_dir)
@@ -190,17 +171,14 @@ namespace ROCKSDB_NAMESPACE
         inode->Serialize(_buffer + inode->GlobalOffset() - _addr_start);
         data_block->Serialize(_buffer + data_block->GlobalOffset() - _addr_start);
 
-        // FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
-        // args->s = this;
-        // args->off = data_block->GlobalOffset() - _addr_start;
         Flush(data_block->GlobalOffset() - _addr_start);
         Unlock();
-        // pool_exec(_fs->_thread_pool, FlushWarpper, args);
         return to_copy;
     }
 
     int S2FSSegment::RemoveINode(uint64_t inode_id)
     {
+        LastModify(microseconds_since_epoch());
         _blocks[_inode_map[inode_id]] = NULL;
         _inode_map.erase(inode_id);
         for (auto p : _name_2_inode)
@@ -232,6 +210,7 @@ namespace ROCKSDB_NAMESPACE
             return -1;
         }
         WriteLock();
+        LastModify(microseconds_since_epoch());
         std::list<S2FSBlock *> inodes;
         std::list<S2FSSegment *> segments;
         uint64_t off = _inode_map.at(inode_id);
@@ -414,6 +393,8 @@ namespace ROCKSDB_NAMESPACE
                 ptr += data_block->ActualSize();
                 _blocks.erase(addr_2_inseg_offset(off));
             }
+
+            p.second->Unlock();
         }
 
         // Update the offsets inside the dir data
@@ -421,10 +402,12 @@ namespace ROCKSDB_NAMESPACE
         {
             if (p.second->Type() == ITYPE_DIR_DATA)
             {
+                p.second->WriteLock();
                 for (auto fa : p.second->FileAttrs())
                 {
                     fa->Offset(_inode_map[fa->InodeID()] + _addr_start);
                 }
+                p.second->Unlock();
             }
         }
 
