@@ -127,7 +127,7 @@ namespace ROCKSDB_NAMESPACE
         uint64_t DeserializeDirData(char *buffer);
 
     public:
-        S2FSBlock(INodeType type, uint64_t segmeng_addr, uint64_t content_size) 
+        S2FSBlock(INodeType type, uint64_t segmeng_addr, uint64_t content_size, char *base) 
         : _id(id_alloc++), 
         _type(type),
         _next(0),
@@ -137,7 +137,7 @@ namespace ROCKSDB_NAMESPACE
         _loaded(true)
         {
             if (type == ITYPE_FILE_DATA && content_size)
-                _content = (char *)calloc(content_size, sizeof(char));
+                _content = base;
             else
                 _content = 0;
         }
@@ -214,6 +214,7 @@ namespace ROCKSDB_NAMESPACE
         std::map<uint64_t, S2FSBlock*> _blocks;
         uint32_t _reserve_for_inode;
         uint64_t _cur_size;
+        char *_buffer;
     public:
         S2FSSegment(uint64_t addr);
         ~S2FSSegment();
@@ -251,7 +252,7 @@ namespace ROCKSDB_NAMESPACE
         inline void AddSize(uint64_t to_add) { _cur_size += to_add; }
         inline uint64_t Addr() { return _addr_start; }
         inline bool IsEmpty() { return _inode_map.empty(); }
-        inline uint64_t GetGlobalOffsetByINodeID(uint64_t id) { return _addr_start + _inode_map.at(id); }
+        inline char *Buffer() { return _buffer; }
 
         static uint64_t Size();
     };

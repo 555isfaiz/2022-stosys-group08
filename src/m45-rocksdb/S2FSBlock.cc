@@ -11,7 +11,7 @@ namespace ROCKSDB_NAMESPACE
         {
         case 2:
         {
-            free(_content);
+            // free(_content);
             _content = 0; _content_size = 0;
             break;
         }
@@ -138,7 +138,7 @@ namespace ROCKSDB_NAMESPACE
         case ITYPE_FILE_DATA:
             *buffer = _type << 4;
             *(uint64_t *)(buffer + 1) = _content_size;
-            memcpy(buffer + 9, _content, _content_size);
+            // memcpy(buffer + 9, _content, _content_size);
             return _content_size + 9;
 
         default:
@@ -312,13 +312,10 @@ namespace ROCKSDB_NAMESPACE
                     break;
 
             } while (true);
+        }
 
-            segment->GetBlockByOffset(inode->Offsets().back())->AddFileAttr(fa);
-        }
-        else
-        {
-            data_block->AddFileAttr(fa);
-        }
+        data_block->AddFileAttr(fa);
+        data_block->Serialize(segment->Buffer() + data_block->GlobalOffset() - segment->Addr());
 
         while (!inodes.empty())
         {

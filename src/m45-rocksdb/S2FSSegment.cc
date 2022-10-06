@@ -4,6 +4,7 @@ namespace ROCKSDB_NAMESPACE
 {
     S2FSSegment::S2FSSegment(uint64_t addr)
     : _addr_start(addr),
+    _buffer(0),
     _cur_size(S2FSBlock::Size())
     {
         // hope this would always be 1...
@@ -20,6 +21,7 @@ namespace ROCKSDB_NAMESPACE
                 continue;
             delete p.second;
         }
+        free(_buffer);
     }
 
     S2FSBlock *S2FSSegment::GetBlockByOffset(uint64_t offset)
@@ -108,12 +110,15 @@ namespace ROCKSDB_NAMESPACE
         }
 
         WriteLock();
+        if (!_buffer)
+            _buffer = (char *)calloc(S2FSSegment::Size(), sizeof(char));
+
         uint64_t allocated = 0;
         S2FSBlock *inode;
         INodeType data_type;
         S2FSFileAttr fa;
 
-        inode = new S2FSBlock(type, _addr_start, 0);
+        inode = new S2FSBlock(type, _addr_start, 0, NULL);
         inode->GlobalOffset(_addr_start + _cur_size);
         _blocks[_cur_size] = inode;
         _name_2_inode[name] = inode->ID();
@@ -134,13 +139,14 @@ namespace ROCKSDB_NAMESPACE
         }
 
         *res = inode;
+        inode->Serialize(_buffer + inode->GlobalOffset() - _addr_start);
 
-        Unlock();
         FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
         args->s = this;
         args->off = inode->GlobalOffset() - _addr_start;
-        pool_exec(_fs->_thread_pool, FlushWarpper, args);
         // Flush(inode->GlobalOffset() - _addr_start);
+        Unlock();
+        pool_exec(_fs->_thread_pool, FlushWarpper, args);
 
         // Do this after releasing the lock, otherwise deadlock happens
         if (inode && parent_dir)
@@ -161,10 +167,13 @@ namespace ROCKSDB_NAMESPACE
         }
 
         WriteLock();
+        if (!_buffer)
+            _buffer = (char *)calloc(S2FSSegment::Size(), sizeof(char));
+
         auto inode = GetBlockByOffset(_inode_map[inode_id]);
         uint64_t to_copy = (size > (S2FSSegment::Size() - _cur_size - 9) ? (S2FSSegment::Size() - _cur_size - 9) : size);
         inode->AddOffset(_cur_size + Addr());
-        S2FSBlock *data_block = new S2FSBlock(type, _addr_start, to_copy);
+        S2FSBlock *data_block = new S2FSBlock(type, _addr_start, to_copy, _buffer + _cur_size + 9);
         data_block->GlobalOffset(_addr_start + _cur_size);
         _blocks[_cur_size] = data_block;
         if (data)
@@ -174,12 +183,15 @@ namespace ROCKSDB_NAMESPACE
         _cur_size += to_copy + 9;
         *res = data_block;
 
-        Unlock();
+        inode->Serialize(_buffer + inode->GlobalOffset() - _addr_start);
+        data_block->Serialize(_buffer + data_block->GlobalOffset() - _addr_start);
+
         FlushArgs *args = (FlushArgs *)calloc(1, sizeof(struct FlushArgs));
         args->s = this;
         args->off = data_block->GlobalOffset() - _addr_start;
-        pool_exec(_fs->_thread_pool, FlushWarpper, args);
         // Flush(data_block->GlobalOffset() - _addr_start);
+        Unlock();
+        pool_exec(_fs->_thread_pool, FlushWarpper, args);
         return to_copy;
     }
 
@@ -251,12 +263,11 @@ namespace ROCKSDB_NAMESPACE
 
     int S2FSSegment::Flush()
     {
-        char buf[S2FSSegment::Size()] = {0};
         uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
         for (auto iter = _inode_map.begin(); iter != _inode_map.end() && off < size; off += INODE_MAP_ENTRY_LENGTH, iter++)
         {
-            *(uint64_t *)(buf + off) = iter->first;
-            *(uint64_t *)(buf + off + 8) = iter->second;
+            *(uint64_t *)(_buffer + off) = iter->first;
+            *(uint64_t *)(_buffer + off + 8) = iter->second;
         }
 
         for (auto p : _blocks)
@@ -264,13 +275,13 @@ namespace ROCKSDB_NAMESPACE
             if (!p.second || p.second == (S2FSBlock *)1)
                 continue;
             
-            size += p.second->Serialize(buf + size);
+            size += p.second->Serialize(_buffer + size);
         }
 
         size = round_up(size, S2FSBlock::Size());
         for (size_t i = _addr_start; i < size; i += S2FSBlock::Size())
         {
-            int ret = zns_udevice_write(_fs->_zns_dev, i, buf + i - _addr_start, S2FSBlock::Size());
+            int ret = zns_udevice_write(_fs->_zns_dev, i, _buffer + i - _addr_start, S2FSBlock::Size());
             if (ret)
             {
                 std::cout << "Error: nvme write error at: " << i << " ret:" << ret << " during S2FSSegment::Flush."
@@ -284,37 +295,13 @@ namespace ROCKSDB_NAMESPACE
     int S2FSSegment::Flush(uint64_t in_seg_off)
     {
         uint64_t write_start = in_seg_off / S2FSBlock::Size() * S2FSBlock::Size(), write_end = round_up(in_seg_off + _blocks[in_seg_off]->ActualSize(), S2FSBlock::Size());
-        uint64_t ptr = 0, total_size = write_end - write_start;
-        char buf[total_size] = {0};
-        char tmp[S2FSSegment::Size()] = {0};
-        auto iter = _blocks.find(in_seg_off);
-        while (iter->first > write_start) 
-            iter--;
-        while (iter->first < write_end && iter != _blocks.end())
-        {
-            if (!iter->second)
-            {
-                auto itert = iter;
-                itert++;
-                ptr += (itert->first - iter->first);
-                iter++;
-                continue;
-            }
-
-            auto len = iter->second->Serialize(tmp);
-            uint64_t skip = (write_start > iter->first ? write_start - iter->first : 0);
-            uint64_t drop = (write_end < iter->first + len ? iter->first + len - write_end : 0);
-            memcpy(buf + ptr, tmp + skip, len - skip - drop);
-            ptr += len - skip - drop;
-            iter++;
-        }
 
         for (size_t i = write_start; i < write_end; i += S2FSBlock::Size())
         {
-            int ret = zns_udevice_write(_fs->_zns_dev, i, buf + i - write_start, S2FSBlock::Size());
+            int ret = zns_udevice_write(_fs->_zns_dev, i + _addr_start, _buffer + i - write_start, S2FSBlock::Size());
             if (ret)
             {
-                std::cout << "Error: nvme write error at: " << i << " ret:" << ret << " during S2FSSegment::Flush."
+                std::cout << "Error: nvme write error at: " << i + _addr_start << " ret:" << ret << " during S2FSSegment::Flush."
                         << "\n";
                 return -1;
             }
