@@ -70,19 +70,66 @@ extern "C"
         return ret;
     }
 
-    int metadata_write(){
-
+    int metadata_write(struct zns_device_extra_info *info, void* buffer, uint32_t size)
+    {    
+        __u64 res_lba;
+        int ret = nvme_zns_append(info->fd, info->nsid, zns_dev->tparams.zns_num_zones * info->blocks_per_zone, 0, 0, 0, 0, 0, size, buffer, 0, NULL, &res_lba);
+        if (ret)
+        {
+            printf("ERROR: failed to write at 0x%d, ret: %d \n", info->log_zone_end, ret);
+            return ret;
+        }
+        return 0;
     }
 
     int metadata_read(){
         
     }
 
-    int init_descriptor(){
+    int init_descriptor(struct zns_device_extra_info *info){
         return 0;
     }
 
-    int restore_descriptor(){
+    int restore_descriptor(struct zns_device_extra_info *info){
+        uint64_t lsb = zns_dev->lba_size_bytes;
+        char buffer[lsb] = {0};
+        uint64_t ptr = 0;
+        int has_descriptor = 1;
+        *(int *) (buffer+ptr) = has_descriptor;
+
+        *(uint32_t *)(buffer + (ptr += sizeof(int))) = info->log_zone_start;
+        *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = info->log_zone_end;
+        *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = info->data_zone_start;
+        *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = info->data_zone_end;
+
+        ptr+=sizeof(uint32_t);
+
+        for (uint64_t i = info->log_zone_num_config; i < zns_dev->tparams.zns_num_zones - 1; i++,ptr += sizeof(uint8_t))
+        {
+            *(uint8_t *)(buffer+ptr) = info->zone_states[i];
+        }
+
+        int log_mapping_size = log_mapping.size();
+        *(int *) (buffer+ptr) = log_mapping_size;
+
+        int data_mapping_size = data_mapping.size();
+        *(int *) (buffer+(ptr+=sizeof(int))) = data_mapping_size;
+        ptr+=sizeof(int);
+
+        for (auto iter = log_mapping.begin(); iter != log_mapping.end(); iter++, ptr += sizeof(int64_t))
+        {
+            *(uint64_t *)(buffer + ptr) = iter->first;
+            *(uint64_t *)(buffer + (ptr+=sizeof(int64_t))) = iter->second;
+        }
+
+        for (auto iter = data_mapping.begin(); iter != data_mapping.end(); iter++, ptr += sizeof(int64_t))
+        {
+            *(uint64_t *)(buffer + ptr) = iter->first;
+            *(uint64_t *)(buffer + (ptr+=sizeof(int64_t))) = iter->second;
+        }
+
+        metadata_write(info, buffer, ptr);
+
         return 0;
     }
 
@@ -94,7 +141,7 @@ extern "C"
     // find the next empty zone address
     int find_next_empty_zone()
     {
-        for (uint64_t i = zns_dev_ex->log_zone_num_config; i < zns_dev->tparams.zns_num_zones; i++)
+        for (uint64_t i = zns_dev_ex->log_zone_num_config; i < zns_dev->tparams.zns_num_zones-1; i++)
         {
             if (zns_dev_ex->zone_states[i] == EMPTY)
             {
@@ -316,9 +363,9 @@ extern "C"
         info->blocks_per_zone = blocks_per_zone;
         (*my_dev)->tparams.zns_zone_capacity = blocks_per_zone * (*my_dev)->lba_size_bytes;
         // need to update this when doing persistence
-        (*my_dev)->capacity_bytes = (report.nr_zones - params->log_zones) * ((*my_dev)->tparams.zns_zone_capacity);
+        (*my_dev)->capacity_bytes = (report.nr_zones - params->log_zones - 1) * ((*my_dev)->tparams.zns_zone_capacity);
 
-        for (uint64_t i = params->log_zones; i < report.nr_zones; i++)
+        for (uint64_t i = params->log_zones; i < report.nr_zones - 1; i++)
         {
             info->zone_states[i] = (((struct nvme_zone_report *)zone_reports)->entries[i].zs >> 4);
         }
@@ -342,8 +389,8 @@ extern "C"
         zns_dev_ex = info;
 
         //read log_mapping data_mapping zns_device_extra_info
-        //if log zone number <512, one zone reserve for metadata_zone is enough
-        int ret = init_descriptor();
+        //if log zone number < 512, one zone reserve for metadata_zone is enough
+        int ret = init_descriptor(info);
 
         return 0;
     }
