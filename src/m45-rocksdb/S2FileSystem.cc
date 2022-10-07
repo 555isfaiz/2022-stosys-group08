@@ -74,7 +74,7 @@ namespace ROCKSDB_NAMESPACE
         params.name = strdup(device.c_str());
         params.log_zones = 3;
         params.gc_wmark = 1;
-        params.force_reset = true;
+        params.force_reset = false;
         int ret = init_ss_zns_device(&params, &this->_zns_dev);
         if (ret != 0)
         {
