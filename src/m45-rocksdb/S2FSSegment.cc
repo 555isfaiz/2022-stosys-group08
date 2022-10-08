@@ -469,23 +469,19 @@ namespace ROCKSDB_NAMESPACE
         Preload(buffer);
         Unlock();
         uint64_t ptr = _reserve_for_inode * S2FSBlock::Size();
-        for (auto iter = _blocks.begin(); iter != _blocks.end(); iter++)
-        {
-            S2FSBlock *block;
-            if (iter->second)
-                block=iter->second;
-            else
+        for (auto iter = _blocks.begin(); iter != _blocks.end();iter++)
+        {      
+            if (!iter->second)
             {
                 auto ii = iter;
                 ii++;
                 ptr += ii->first - iter->first;
                 continue;
             }
-
+            S2FSBlock *block = iter->second; 
             //block->WriteLock();
             auto ssize = block->Deserialize(buffer + ptr);
             //block->Unlock();
-
             if (block->Type() == 0)
                 delete block;
             else

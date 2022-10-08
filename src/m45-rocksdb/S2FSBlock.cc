@@ -32,7 +32,7 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::SerializeFileInode(char *buffer)
     {
-        *buffer = _type << 4;
+        *buffer = _type<<4;
         uint64_t ptr = 0;
         *(uint64_t *)(buffer + (ptr += 1)) = _next;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _prev;
@@ -52,6 +52,7 @@ namespace ROCKSDB_NAMESPACE
         _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         ptr += sizeof(uint64_t);
+        //bugs looks like here, plan to add a length instead of 0
         while (*(uint64_t *)(buffer + ptr))
         {
             _offsets.push_back(*(uint64_t *)(buffer + ptr));
@@ -61,7 +62,7 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::SerializeDirInode(char *buffer)
     {
-        *buffer = _type << 4;
+        *buffer = _type<<4;
         uint64_t ptr = 0;
         *(uint64_t *)(buffer + (ptr += 1)) = _next;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _prev;
@@ -93,7 +94,7 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::SerializeDirData(char *buffer)
     {
-        *buffer = _type << 4;
+        *buffer = _type<<4;
         *(uint64_t *)(buffer + 1) = _content_size;
         uint64_t ptr = 9;
         for (auto fa : _file_attrs)
@@ -136,7 +137,7 @@ namespace ROCKSDB_NAMESPACE
             return SerializeFileInode(buffer);
 
         case ITYPE_FILE_DATA:
-            *buffer = _type << 4;
+            *buffer = _type<<4;
             *(uint64_t *)(buffer + 1) = _content_size;
             // memcpy(buffer + 9, _content, _content_size);
             return _content_size + 9;
@@ -154,7 +155,7 @@ namespace ROCKSDB_NAMESPACE
         if (_loaded)
             return ActualSize();
 
-        uint8_t type = *buffer >> 4;
+        uint8_t type = *buffer>>4;
         _loaded = true;
         switch (type)
         {
