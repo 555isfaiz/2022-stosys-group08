@@ -191,7 +191,6 @@ namespace ROCKSDB_NAMESPACE
             std::cout << "Error: reading segment from WP, ret: " << ret << "\n";
             return NULL;
         }
-
         s->Deserialize(buf);
 
         return s;
@@ -241,9 +240,9 @@ namespace ROCKSDB_NAMESPACE
         if (del_pos == 0)
         {
             S2FSSegment *segment = ReadSegment(0);
-            segment->WriteLock();
+            //segment->WriteLock();
             block = segment->LookUp("/");
-            segment->Unlock();
+            //segment->Unlock();
             next = name.substr(del_pos + 1, name.length() - del_pos - 1);
             if (!next.empty() && next.at(0) == '/')
             {
@@ -269,7 +268,7 @@ namespace ROCKSDB_NAMESPACE
             block = parent->DirectoryLookUp(n);
         }
 
-        if (block)
+        if (block&&block!=(S2FSBlock *)1&&block!=(S2FSBlock *)0)
         {
             if (!next.empty())
             {
