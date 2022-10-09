@@ -15,6 +15,7 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSSegment::~S2FSSegment()
     {
+        Flush();
         for (auto p : _blocks)
         {
             if (!p.second || p.second == (S2FSBlock *)1)
@@ -260,14 +261,13 @@ namespace ROCKSDB_NAMESPACE
 
         for (auto iter = _blocks.begin(); iter != _blocks.end(); iter++)
         {
-            if (!iter->second)
+            if (!iter->second||iter->second->Type()==0)
             {
                 auto ii = iter;
                 ii++;
                 size += ii->first - iter->first;
                 continue;
             }
-            
             size += iter->second->Serialize(_buffer + size);
         }
 

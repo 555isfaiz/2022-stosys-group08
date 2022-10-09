@@ -38,6 +38,9 @@ namespace ROCKSDB_NAMESPACE
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _prev;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _id;
         ptr += sizeof(uint64_t);
+        uint64_t length = _offsets.size();
+        *(uint64_t *)(buffer + ptr) = length;
+        ptr += sizeof(uint64_t);
         for (auto iter = _offsets.begin(); iter != _offsets.end(); iter++, ptr += sizeof(uint64_t))
         {
             *(uint64_t *)(buffer + ptr) = *iter;
@@ -53,9 +56,12 @@ namespace ROCKSDB_NAMESPACE
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         ptr += sizeof(uint64_t);
         //bugs looks like here, plan to add a length instead of 0
-        while (*(uint64_t *)(buffer + ptr))
+        uint64_t length = *(uint64_t *)(buffer+ptr);
+        ptr += sizeof(uint64_t);
+        while (length--)       
         {
             _offsets.push_back(*(uint64_t *)(buffer + ptr));
+            ptr += sizeof(uint64_t);
         }
         return S2FSBlock::Size();
     }
@@ -69,6 +75,9 @@ namespace ROCKSDB_NAMESPACE
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _id;
         strcpy((buffer + (ptr += sizeof(uint64_t))), _name.c_str());
         ptr += MAX_NAME_LENGTH;
+        uint64_t length = _offsets.size();
+        *(uint64_t *)(buffer + ptr) = length;
+        ptr += sizeof(uint64_t);
         for (auto iter = _offsets.begin(); iter != _offsets.end(); iter++, ptr += sizeof(uint64_t))
         {
             *(uint64_t *)(buffer + ptr) = *iter;
@@ -85,9 +94,12 @@ namespace ROCKSDB_NAMESPACE
         uint32_t str_len = strlen(buffer + (ptr += sizeof(uint64_t)));
         _name = std::string(buffer + (ptr += sizeof(uint64_t)), (str_len < MAX_NAME_LENGTH ? str_len : MAX_NAME_LENGTH));
         ptr += MAX_NAME_LENGTH;
-        while (*(uint64_t *)(buffer + ptr))
+        uint64_t length = *(uint64_t *)(buffer + ptr );
+        ptr += sizeof(uint64_t);
+        while (length--)
         {
-            _offsets.push_back(*(uint64_t *)(buffer + ptr));
+            _offsets.push_back(*(uint64_t *)(buffer + ptr)); 
+            ptr += sizeof(uint64_t); 
         }
         return S2FSBlock::Size();
     }
@@ -97,6 +109,9 @@ namespace ROCKSDB_NAMESPACE
         *buffer = _type<<4;
         *(uint64_t *)(buffer + 1) = _content_size;
         uint64_t ptr = 9;
+        uint64_t length = _file_attrs.size();
+        *(uint64_t *)(buffer + ptr) = length;
+        ptr+=sizeof(uint64_t);
         for (auto fa : _file_attrs)
         {
             ptr += fa->Serialize(buffer + ptr);
@@ -108,7 +123,9 @@ namespace ROCKSDB_NAMESPACE
     {
         uint64_t ptr = 9;
         _content_size = *(uint64_t *)(buffer + 1);
-        for (size_t i = 0; i < _content_size; i++)
+        uint64_t length = *(uint64_t *)(buffer + ptr );
+        ptr+=sizeof(uint64_t);
+        for (size_t i = 0; i < length; i++)
         {
             S2FSFileAttr *fa = new S2FSFileAttr;
             auto size = fa->Deserialize(buffer + ptr);

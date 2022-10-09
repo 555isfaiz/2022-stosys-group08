@@ -122,21 +122,21 @@ namespace ROCKSDB_NAMESPACE
             s->LastModify(microseconds_since_epoch());
         }
 
-        for (int i = 0; i < 4; i++)
-        {
-            struct GCWrapperArg *arg = (struct GCWrapperArg *)calloc(1, sizeof(struct GCWrapperArg));
-            _gc_args[i] = arg;
-            arg->fs = this;
-            auto each = _cache.size() / 4;
-            if (i == 3)
-                arg->seg_num = each;
-            else
-                arg->seg_num = _cache.size() - each * 3;
+        // for (int i = 0; i < 4; i++)
+        // {
+        //     struct GCWrapperArg *arg = (struct GCWrapperArg *)calloc(1, sizeof(struct GCWrapperArg));
+        //     _gc_args[i] = arg;
+        //     arg->fs = this;
+        //     auto each = _cache.size() / 4;
+        //     if (i == 3)
+        //         arg->seg_num = each;
+        //     else
+        //         arg->seg_num = _cache.size() - each * 3;
             
-            arg->seg_start = i * each * S2FSSegment::Size();
+        //     arg->seg_start = i * each * S2FSSegment::Size();
 
-            pool_exec(_thread_pool, GCWrapper, arg);
-        }
+        //     pool_exec(_thread_pool, GCWrapper, arg);
+        // }
     }
 
     S2FileSystem::~S2FileSystem()
@@ -214,18 +214,18 @@ namespace ROCKSDB_NAMESPACE
             goto start;
         }
 
-        for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
-        {
-            seg = ReadSegment(i);
-            seg->ReadLock();
-            if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
-            {
-                seg->Unlock();
-                return seg;
-            }
-            seg->Unlock();
-            seg->OnGC();
-        }
+        // for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
+        // {
+        //     seg = ReadSegment(i);
+        //     seg->ReadLock();
+        //     if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
+        //     {
+        //         seg->Unlock();
+        //         return seg;
+        //     }
+        //     seg->Unlock();
+        //     seg->OnGC();
+        // }
 
         std::cout << "Disk full"
                   << "\n";
