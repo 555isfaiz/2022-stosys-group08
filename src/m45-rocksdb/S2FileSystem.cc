@@ -29,39 +29,32 @@ SOFTWARE.
 
 #include <stosys_debug.h>
 #include <utils.h>
+#include <mutex>
 
 namespace ROCKSDB_NAMESPACE
 {
-    void *GCWrapper(void *args)
-    {
-        struct GCWrapperArg *gc_arg = (struct GCWrapperArg *)args;
-        if (gc_arg->fs == NULL)
-            return (void *)0;
+    class inode{
+        int inodeID;
+        int next;
+        int previous;
+        int address;
+        std::mutex mylock;
+        std::vector<int> fileBlockAddress;
+    };
 
-        auto now = microseconds_since_epoch();
-        for (uint32_t i = 0; i < gc_arg->seg_num; i++)
-        {
-            auto s = gc_arg->fs->ReadSegment(i * S2FSSegment::Size());
-            if (!s)
-                continue;
-            if (now - s->LastModify() > 300000000)  // 5 min
-            {
-                s->OnGC();
-            }
-        }
-        return (void *)1;
-    }
+    std::map<int, inode> inodeMap;
+    std::map<int,std::string> fileBlockAddress_2_content;
 
     S2FileSystem::S2FileSystem(std::string uri_db_path, bool debug)
     {
         FileSystem::Default();
 
-        this->_seq_id = 0;
-        this->_name = "S2FileSystem forward to ";
-        // Do not know the meaning of Filesystem default
-        // this->_name = this->_name.append(FileSystem::Default()->Name());
-        this->_ss.str("");
-        this->_ss.clear();
+        // this->_seq_id = 0;
+        // this->_name = "S2FileSystem forward to ";
+        // // Do not know the meaning of Filesystem default
+        // // this->_name = this->_name.append(FileSystem::Default()->Name());
+        // this->_ss.str("");
+        // this->_ss.clear();
 
         std::string sdelimiter = ":";
         std::string edelimiter = "://";
@@ -82,7 +75,6 @@ namespace ROCKSDB_NAMESPACE
             std::cout << "Error: ret " << ret << "\n";
         }
         free(params.name);
-        pool_init(&_thread_pool, 4);
         this->_zns_dev_ex = (struct zns_device_extra_info *)this->_zns_dev->_private;
         assert(ret == 0);
         assert(this->_zns_dev->lba_size_bytes != 0);
@@ -95,31 +87,16 @@ namespace ROCKSDB_NAMESPACE
         for (size_t i = 0; i < segments; i++)
         {
             char buf[S2FSBlock::Size()] = {0};
-            uint64_t segm_start = i * S2FSSegment::Size();
-            S2FSSegment *s = new S2FSSegment(segm_start);
 
-            int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSBlock::Size());
+            int ret = zns_udevice_read(_zns_dev, 0, buf, S2FSBlock::Size());
             if (ret)
             {
                 std::cout << "Error: reading first block, ret: " << ret << " addr: " << segm_start << "\n";
                 continue;
             }
 
-            s->Preload(buf);
-            _cache[segm_start] = s;
+            Preload(buf);
 
-            // First segment is empty. So we have a brand new flash here.
-            // set up root directory
-            if (!segm_start && s->IsEmpty())
-            {
-                S2FSBlock *b;
-                s->AllocateNew("/", ITYPE_DIR_INODE, &b, NULL);
-            }
-
-            if (!s->IsEmpty())
-                _wp_end = segm_start;
-
-            s->LastModify(microseconds_since_epoch());
         }
 
         // for (int i = 0; i < 4; i++)
@@ -162,151 +139,10 @@ namespace ROCKSDB_NAMESPACE
         return this->_ss.str();
     }
 
-    S2FSSegment *S2FileSystem::ReadSegment(uint64_t from)
-    {
-        if (!map_contains(_cache, from))
-        {
-            return NULL;
-        }
-        
-        return _cache[from];
-    }
-
-    S2FSSegment *S2FileSystem::LoadSegmentFromDisk()
-    {
-        return LoadSegmentFromDisk(_wp_end);
-    }
-
-    S2FSSegment *S2FileSystem::LoadSegmentFromDisk(uint64_t from)
-    {
-        uint64_t segm_start = segment_2_addr(addr_2_segment(from));
-        S2FSSegment *s = _cache[segm_start];
-        if (!s)
-            return s;
-        char buf[S2FSSegment::Size()] = {0};
-
-        int ret = zns_udevice_read(_zns_dev, segm_start, buf, S2FSSegment::Size());
-        if (ret)
-        {
-            std::cout << "Error: reading segment from WP, ret: " << ret << "\n";
-            return NULL;
-        }
-        s->Deserialize(buf);
-
-        return s;
-    }
-
-    S2FSSegment *S2FileSystem::FindNonFullSegment()
-    {
-    start:
-        S2FSSegment *seg = ReadSegment(_wp_end);
-        seg->ReadLock();
-        if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
-        {
-            seg->Unlock();
-            return seg;
-        }
-        seg->Unlock();
-
-        if (_wp_end < _zns_dev->capacity_bytes - S2FSSegment::Size())
-        {
-            _wp_end += S2FSSegment::Size();
-            goto start;
-        }
-
-        // for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
-        // {
-        //     seg = ReadSegment(i);
-        //     seg->ReadLock();
-        //     if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
-        //     {
-        //         seg->Unlock();
-        //         return seg;
-        //     }
-        //     seg->Unlock();
-        //     seg->OnGC();
-        // }
-
-        std::cout << "Disk full"
-                  << "\n";
-        return NULL;
-    }
-
-    bool S2FileSystem::DirectoryLookUp(std::string &name, S2FSBlock *parent, bool set_parent, S2FSBlock **res)
-    {
-        auto del_pos = name.find(_fs_delimiter);
-        S2FSBlock *block = NULL;
-        std::string next;
-        if (del_pos == 0)
-        {
-            S2FSSegment *segment = ReadSegment(0);
-            //segment->WriteLock();
-            block = segment->LookUp("/");
-            //segment->Unlock();
-            next = name.substr(del_pos + 1, name.length() - del_pos - 1);
-            if (!next.empty() && next.at(0) == '/')
-            {
-                next = next.substr(1, name.length() - 1);
-            }
-        }
-        else if (name.length() != 0)
-        {
-            std::string n;
-            if (del_pos != name.npos)
-            {
-                n = name.substr(0, del_pos);
-                next = name.substr(del_pos + 1, name.length() - del_pos - 1);
-                if (!next.empty() && next.at(0) == '/')
-                {
-                    next = next.substr(1, name.length() - 1);
-                }
-            }
-            else
-            {
-                n = name;
-            }
-            block = parent->DirectoryLookUp(n);
-        }
-
-        if (block&&block!=(S2FSBlock *)1&&block!=(S2FSBlock *)0)
-        {
-            if (!next.empty())
-            {
-                return DirectoryLookUp(next, block, set_parent, res);
-            }
-            else
-            {
-                if (set_parent)
-                    *res = parent;
-                else
-                    *res = block;
-                return true;
-            }
-        }
-        else
-        {
-            *res = parent;
-            return false;
-        }
-    }
-
-    std::string strip_name(const std::string &fname, const std::string &delimiter)
-    {
-        size_t pos;
-        std::string name = fname;
-        while ((pos = name.find(delimiter)) != name.npos)
-        {
-            if (pos == 0)
-                name = name.substr(1, name.length() - 1);
-            else
-                name = name.substr(pos + 1, name.length() - pos - 1);
-        }
-        return name;
-    }
 
     // Look up the file indicated by fname, and set res to the inode of that file
     // If the file does not exist, res will be set to the inode of the deepest existing directory of fname
-    IOStatus S2FileSystem::_FileExists(const std::string &fname, bool set_parent, S2FSBlock **res)
+    IOStatus S2FileSystem::FileExists(const std::string &fname, bool set_parent, S2FSBlock **res)
     {
         std::string name = fname;
         auto exist = DirectoryLookUp(name, NULL, set_parent, res);
@@ -351,60 +187,9 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewRandomAccessFile(const std::string &fname, const FileOptions &file_opts,
                                                std::unique_ptr<FSRandomAccessFile> *result, IODebugContext *dbg)
     {
-        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSBlock *inode;
-        auto r = _FileExists(fname, false, &inode);
-        if (!r.ok())
-            return r;
-        result->reset(new S2FSRandomAccessFile(inode));
-        return IOStatus::OK();
-    }
+ 
 
-    const char *S2FileSystem::Name() const
-    {
-        return "S2FileSytem";
-    }
 
-    // Create an object that writes to a new file with the specified
-    // name.  Deletes any existing file with the same name and creates a
-    // new file.  On success, stores a pointer to the new file in
-    // *result and returns OK.  On failure stores nullptr in *result and
-    // returns non-OK.
-    //
-    // The returned file will only be accessed by one thread at a time.
-    IOStatus S2FileSystem::NewWritableFile(const std::string &fname, const FileOptions &file_opts,
-                                           std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
-    {
-        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSBlock *inode;
-        S2FSSegment *s;
-        if (_FileExists(fname, false, &inode).ok())
-        {
-            s = ReadSegment(inode->SegmentAddr());
-            s->Free(inode->ID());
-            _FileExists(fname, false, &inode); // set inode to the parent dir
-        }
-
-        bool allocated = false;
-        S2FSBlock *new_inode;
-        while (s = FindNonFullSegment())
-        {
-            if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
-            {
-                allocated = true;
-                break;
-            }
-        }
-
-        if (allocated)
-        {
-            result->reset(new S2FSWritableFile(new_inode));
-            return IOStatus::OK();
-        }
-        else
-        {
-            return IOStatus::IOError(__FUNCTION__);
-        }
     }
 
     IOStatus S2FileSystem::ReopenWritableFile(const std::string &, const FileOptions &, std::unique_ptr<FSWritableFile> *,
@@ -439,12 +224,12 @@ namespace ROCKSDB_NAMESPACE
                                IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSBlock *inode;
-        auto r = _FileExists(name, false, &inode);
-        if (!r.ok())
-            return r;
-        result->reset(new S2FSDirectory(inode));
-        return IOStatus::OK();
+        // S2FSBlock *inode;
+        // auto r = _FileExists(name, false, &inode);
+        // if (!r.ok())
+        //     return r;
+        // result->reset(new S2FSDirectory(inode));
+        // return IOStatus::OK();
     }
 
     IOStatus S2FileSystem::GetFreeSpace(const std::string &, const IOOptions &, uint64_t *, IODebugContext *)
@@ -463,36 +248,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::CreateDir(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSBlock *inode;
-        if (_FileExists(dirname, false, &inode).ok())
-            return IOStatus::IOError(__FUNCTION__);
-
-        auto to_create = dirname.substr(inode->Name().length(), dirname.length() - inode->Name().length());
-        while (!to_create.empty())
-        {
-            S2FSBlock *res;
-            uint64_t pos = to_create.find(_fs_delimiter);
-            auto name = to_create.substr(0, pos == to_create.npos ? to_create.length() : pos);
-            S2FSSegment *s;
-            bool allocated = false;
-            while (s = FindNonFullSegment())
-            {
-                if (s->AllocateNew(name, ITYPE_DIR_INODE, &res, inode) >= 0)
-                {
-                    allocated = true;
-                    break;
-                }
-            }
-
-            if (!allocated)
-            {
-                return IOStatus::IOError(__FUNCTION__);
-            }
-            inode = res;
-            to_create = to_create.substr(name.length() + 1, to_create.length() - name.length());
-            if (to_create == "/")
-                break;
-        }
+        
         return IOStatus::OK();
     }
 
@@ -586,16 +342,16 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::UnlockFile(FileLock *lock, const IOOptions &options, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSFileLock *fl = dynamic_cast<S2FSFileLock *>(lock);
-        if (fl->Unlock())
-        {
-            return IOStatus::IOError(__FUNCTION__);
-        }
-        else
-        {
-            delete fl;
-            return IOStatus::OK();
-        }
+        // S2FSFileLock *fl = dynamic_cast<S2FSFileLock *>(lock);
+        // if (fl->Unlock())
+        // {
+        //     return IOStatus::IOError(__FUNCTION__);
+        // }
+        // else
+        // {
+        //     delete fl;
+        //     return IOStatus::OK();
+        // }
     }
 
     // Lock the specified file.  Used to prevent concurrent access to
@@ -615,37 +371,37 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::LockFile(const std::string &fname, const IOOptions &options, FileLock **lock, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSBlock *inode;
-        S2FSSegment *s;
-        S2FSBlock *new_inode;
-        if (!_FileExists(fname, false, &inode).ok())
-        {
-            bool allocated = false;
-            while (s = FindNonFullSegment())
-            {
-                if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
-                {
-                    allocated = true;
-                    break;
-                }
-            }
+        // S2FSBlock *inode;
+        // S2FSSegment *s;
+        // S2FSBlock *new_inode;
+        // if (!_FileExists(fname, false, &inode).ok())
+        // {
+        //     bool allocated = false;
+        //     while (s = FindNonFullSegment())
+        //     {
+        //         if (s->AllocateNew(strip_name(fname, _fs_delimiter), ITYPE_FILE_INODE, &new_inode, inode) >= 0)
+        //         {
+        //             allocated = true;
+        //             break;
+        //         }
+        //     }
 
-            if (!allocated)
-                return IOStatus::IOError(__FUNCTION__);
-        }
+        //     if (!allocated)
+        //         return IOStatus::IOError(__FUNCTION__);
+        // }
 
-        auto fl = new S2FSFileLock(new_inode);
-        if (fl->Lock())
-        {
-            delete fl;
-            *lock = NULL;
-            return IOStatus::IOError(__FUNCTION__);
-        }
-        else
-        {
-            *lock = fl;
-            return IOStatus::OK();
-        }
+        // auto fl = new S2FSFileLock(new_inode);
+        // if (fl->Lock())
+        // {
+        //     delete fl;
+        //     *lock = NULL;
+        //     return IOStatus::IOError(__FUNCTION__);
+        // }
+        // else
+        // {
+        //     *lock = fl;
+        //     return IOStatus::OK();
+        // }
     }
 
     IOStatus
