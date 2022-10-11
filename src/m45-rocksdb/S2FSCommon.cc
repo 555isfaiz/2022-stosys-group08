@@ -19,8 +19,9 @@ namespace ROCKSDB_NAMESPACE
     uint64_t S2FSFileAttr::Deserialize(char *buffer)
     {
         uint64_t ptr = MAX_NAME_LENGTH;
-        Name(std::string(buffer, MAX_NAME_LENGTH));
-        if (Name().at(0) == '\0')
+        uint32_t str_len = strlen(buffer);
+        Name(std::string(buffer, (str_len < MAX_NAME_LENGTH ? str_len : MAX_NAME_LENGTH)));
+        if (Name().size() == 0)
             return 0;
         IsDir(*(uint64_t *)(buffer + ptr) & ((uint64_t)1 << 63))
         ->Size(*(uint64_t *)(buffer + ptr) | ((uint64_t)1 << 63))

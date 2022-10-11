@@ -54,7 +54,7 @@ namespace ROCKSDB_NAMESPACE
         _next = *(uint64_t *)(buffer + (ptr += 1));
         _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
-        // ptr += sizeof(uint64_t);
+        ptr += sizeof(uint64_t);
         //bugs looks like here, plan to add a length instead of 0
         uint64_t length = *(uint64_t *)(buffer+ptr);
         ptr += sizeof(uint64_t);
@@ -113,7 +113,7 @@ namespace ROCKSDB_NAMESPACE
         {
             ptr += fa->Serialize(buffer + ptr);
         }
-        return _content_size;
+        return _content_size + 9;
     }
 
     uint64_t S2FSBlock::DeserializeDirData(char *buffer)
@@ -132,7 +132,7 @@ namespace ROCKSDB_NAMESPACE
             ptr += size;
             _file_attrs.push_back(fa);
         }
-        return _content_size;
+        return _content_size + 9;
     }
 
     uint64_t S2FSBlock::Serialize(char *buffer)
@@ -167,7 +167,7 @@ namespace ROCKSDB_NAMESPACE
         if (_loaded)
             return ActualSize();
 
-        uint8_t type = *buffer>>4;
+        uint8_t type = (uint8_t)(*buffer) >> 4;
         _loaded = true;
         switch (type)
         {
@@ -526,6 +526,60 @@ namespace ROCKSDB_NAMESPACE
             in->RenameChild(src, target);
         }
 
+        Unlock();
+    }
+
+    S2FSFileAttr* S2FSBlock::RemoveFileAttr(const std::string& name)
+    {
+        for (auto iter = _file_attrs.begin(); iter != _file_attrs.end(); iter++)
+        {
+            auto ptr = *iter;
+            if (ptr->Name() == name)
+            {
+                _file_attrs.erase(iter);
+                return ptr;
+            }
+        }
+        return NULL;
+    }
+
+    void S2FSBlock::FreeChild(const std::string &name)
+    {
+        WriteLock();
+        LivenessCheck();
+        S2FSBlock *res = NULL;
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            auto fa = data->RemoveFileAttr(name);
+            if (fa)
+            {
+                s->Unlock();
+                data->Unlock();
+                Unlock();
+                s = _fs->ReadSegment(addr_2_segment(fa->Offset()));
+                s->Free(fa->InodeID());
+                delete fa;
+                return;
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            in->FreeChild(name);
+        }
         Unlock();
     }
 

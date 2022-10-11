@@ -144,7 +144,13 @@ namespace ROCKSDB_NAMESPACE
         }
 
         // Should followed by Deserialize()
-        S2FSBlock() : _loaded(false) {}
+        S2FSBlock()
+        : _loaded(false),
+        _id(0),
+        _next(0),
+        _prev(0),
+        _content(0),
+        _content_size(0) {}
         ~S2FSBlock();
 
         uint64_t Serialize(char *buffer);
@@ -174,6 +180,7 @@ namespace ROCKSDB_NAMESPACE
             ->Size(fa.Size());
             _file_attrs.push_back(_fa);
         }
+        S2FSFileAttr* RemoveFileAttr(const std::string& name);
         inline char* Content()                                  { return _content; }
         inline void Content(char *content)                      { _content = content; }
         inline uint64_t ContentSize()                           { return _content_size; }
@@ -195,6 +202,7 @@ namespace ROCKSDB_NAMESPACE
         int Read(char *buf, uint64_t n, uint64_t offset, uint64_t buf_offset);
         int ReadChildren(std::vector<std::string> *list);
         void RenameChild(const std::string &src, const std::string &target);
+        void FreeChild(const std::string &name);
         // No locking inside
         int Offload();
         uint64_t ActualSize();

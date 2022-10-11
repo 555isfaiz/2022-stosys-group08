@@ -554,15 +554,15 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::DeleteFile(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        std::cout << " delete file: " << fname << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
-        if (!_FileExists(fname, false, &inode).ok())
+        if (!_FileExists(fname, true, &inode).ok())
         {
             return IOStatus::NotFound(__FUNCTION__);
         }
 
-        s = ReadSegment(inode->SegmentAddr());
-        s->Free(inode->ID());
+        inode->FreeChild(strip_name(fname, _fs_delimiter));
         return IOStatus::OK();
     }
 
