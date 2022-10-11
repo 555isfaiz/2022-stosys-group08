@@ -36,17 +36,15 @@ extern "C"
 #define address_2_zone(addr) ((addr) / (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)) + zns_dev_ex->log_zone_num_config
 #define address_2_offset(addr) ((addr) % (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes) / zns_dev->lba_size_bytes)
 #define zone_2_address(zone_no) (zone_no - zns_dev_ex->log_zone_num_config) * (zns_dev_ex->blocks_per_zone * zns_dev->lba_size_bytes)
-#define map_contains(map, key)  (map.find(key) != map.end())
+#define map_contains(map, key) (map.find(key) != map.end())
 #define EMPTY 1
 #define FULL 14
 #define MDTS (64 * 4096)
-#define roundup(x, y) (					\
-{							\
-	typeof(y) __y = y;				\
-	(((x) + (__y - 1)) / __y) * __y;		\
-}							\
-)
-
+#define roundup(x, y) (                  \
+    {                                    \
+        typeof(y) __y = y;               \
+        (((x) + (__y - 1)) / __y) * __y; \
+    })
 
     std::unordered_map<int64_t, int64_t> log_mapping;
     std::unordered_map<int64_t, int64_t> data_mapping;
@@ -77,108 +75,115 @@ extern "C"
         return ret;
     }
 
-    int metadata_write(struct zns_device_extra_info *info, void* buffer, uint32_t size)
-    {    
+    int metadata_write(struct zns_device_extra_info *info, void *buffer, uint32_t size)
+    {
         __u64 res_lba;
         uint32_t blocks = size / zns_dev->lba_size_bytes;
-        uint64_t last_zone = zns_dev->tparams.zns_num_zones-1;
+        uint64_t last_zone = zns_dev->tparams.zns_num_zones - 1;
         if (size % zns_dev->lba_size_bytes)
         {
             printf("INVALID: write size not aligned to block size\n");
             return -1;
         }
         int ret;
-        if(zns_dev_ex->zone_states[last_zone] != EMPTY){
+        if (zns_dev_ex->zone_states[last_zone] != EMPTY)
+        {
             ret = nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, last_zone * info->blocks_per_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
-            if(ret){
-            printf("ERROR: failed to reset at metadata block 0x%lx, ret: %ld \n", (last_zone) * info->blocks_per_zone, ret);
-            return ret;
+            if (ret)
+            {
+                printf("ERROR: failed to reset at metadata block 0x%lx, ret: %ld \n", (last_zone)*info->blocks_per_zone, ret);
+                return ret;
             }
         }
-        
+
         ret = nvme_zns_append(info->fd, info->nsid, last_zone * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, size, buffer, 0, NULL, &res_lba);
         if (ret)
         {
-            printf("ERROR: failed to write at metadata block 0x%lx, ret: %ld, size:%d \n", (last_zone) * info->blocks_per_zone, ret, size);
+            printf("ERROR: failed to write at metadata block 0x%lx, ret: %ld, size:%d \n", (last_zone)*info->blocks_per_zone, ret, size);
             return ret;
         }
         return 0;
     }
 
-    int metadata_read(struct zns_device_extra_info *info, void* buffer, uint32_t size){
-         uint32_t blocks = size / zns_dev->lba_size_bytes;
+    int metadata_read(struct zns_device_extra_info *info, void *buffer, uint32_t size)
+    {
+        uint32_t blocks = size / zns_dev->lba_size_bytes;
         if (size % zns_dev->lba_size_bytes)
         {
             printf("INVALID: read size not aligned to block size\n");
             return -1;
         }
-         int ret = nvme_read(info->fd, info->nsid, (zns_dev->tparams.zns_num_zones-1) * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, 0, size, buffer, 0, NULL);
-                if (ret)
-                {
-                    printf("INFO: failed to read metadata block at 0x%lx, ret: %ld\n", (zns_dev->tparams.zns_num_zones-1) * info->blocks_per_zone, ret);
-                    return ret;
-                }
+        int ret = nvme_read(info->fd, info->nsid, (zns_dev->tparams.zns_num_zones - 1) * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, 0, size, buffer, 0, NULL);
+        if (ret)
+        {
+            printf("INFO: failed to read metadata block at 0x%lx, ret: %ld\n", (zns_dev->tparams.zns_num_zones - 1) * info->blocks_per_zone, ret);
+            return ret;
+        }
         return 0;
     }
 
-    int init_descriptor(struct zns_device_extra_info *info){
+    int init_descriptor(struct zns_device_extra_info *info)
+    {
         uint64_t lsb = zns_dev->lba_size_bytes;
-        uint64_t  bpz = zns_dev_ex->blocks_per_zone;
-        char buffer[lsb*bpz] = {0};
+        uint64_t bpz = zns_dev_ex->blocks_per_zone;
+        char buffer[lsb * bpz] = {0};
         char size_char[lsb];
 
-        if (zns_dev_ex->zone_states[zns_dev->tparams.zns_num_zones-1] == EMPTY){
+        if (zns_dev_ex->zone_states[zns_dev->tparams.zns_num_zones - 1] == EMPTY)
+        {
             return 0;
         }
 
         metadata_read(info, size_char, lsb);
         uint32_t ptr = 0;
         uint32_t size = *(uint32_t *)(size_char);
-        if(size==0){
+        if (size == 0)
+        {
             return 0;
-        } 
+        }
 
-        metadata_read(info, buffer, roundup(size,lsb));
+        metadata_read(info, buffer, roundup(size, lsb));
 
         info->log_zone_start = *(uint32_t *)(buffer + (ptr += sizeof(uint32_t)));
         info->log_zone_end = *(uint32_t *)(buffer + (ptr += sizeof(uint32_t)));
         info->data_zone_start = *(uint32_t *)(buffer + (ptr += sizeof(uint32_t)));
         info->data_zone_end = *(uint32_t *)(buffer + (ptr += sizeof(uint32_t)));
 
-        ptr+=sizeof(uint32_t);
+        ptr += sizeof(uint32_t);
 
-        for (uint64_t i = info->log_zone_num_config; i < zns_dev->tparams.zns_num_zones - 1; i++,ptr += sizeof(uint8_t))
+        for (uint64_t i = info->log_zone_num_config; i < zns_dev->tparams.zns_num_zones - 1; i++, ptr += sizeof(uint8_t))
         {
-             info->zone_states[i] = *(uint8_t *)(buffer+ptr);
+            info->zone_states[i] = *(uint8_t *)(buffer + ptr);
         }
 
-        uint32_t log_mapping_size = *(uint32_t *) (buffer+ptr);
+        uint32_t log_mapping_size = *(uint32_t *)(buffer + ptr);
 
-        uint32_t data_mapping_size = *(uint32_t *) (buffer+(ptr+=sizeof(int)));
+        uint32_t data_mapping_size = *(uint32_t *)(buffer + (ptr += sizeof(int)));
 
-        ptr+=sizeof(uint32_t);
+        ptr += sizeof(uint32_t);
 
-        for (int i=0; i<log_mapping_size; i++, ptr += sizeof(int64_t))
+        for (int i = 0; i < log_mapping_size; i++, ptr += sizeof(int64_t))
         {
             int64_t key = *(uint64_t *)(buffer + ptr);
-            int64_t value = *(uint64_t *)(buffer + (ptr+=sizeof(int64_t)));
+            int64_t value = *(uint64_t *)(buffer + (ptr += sizeof(int64_t)));
             log_mapping[key] = value;
         }
 
-        for (int i=0; i < data_mapping_size; i++, ptr += sizeof(int64_t))
+        for (int i = 0; i < data_mapping_size; i++, ptr += sizeof(int64_t))
         {
             int64_t key = *(uint64_t *)(buffer + ptr);
-            int64_t value = *(uint64_t *)(buffer + (ptr+=sizeof(int64_t)));
+            int64_t value = *(uint64_t *)(buffer + (ptr += sizeof(int64_t)));
             data_mapping[key] = value;
         }
 
         return 0;
     }
 
-    int restore_descriptor(struct zns_device_extra_info *info){
+    int restore_descriptor(struct zns_device_extra_info *info)
+    {
         uint64_t bpz = zns_dev_ex->blocks_per_zone;
         uint64_t lsb = zns_dev->lba_size_bytes;
-        char buffer[lsb*bpz] = {0};
+        char buffer[lsb * bpz] = {0};
         uint32_t ptr = 0;
 
         *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = info->log_zone_start;
@@ -186,35 +191,35 @@ extern "C"
         *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = info->data_zone_start;
         *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = info->data_zone_end;
 
-        ptr+=sizeof(uint32_t);
+        ptr += sizeof(uint32_t);
 
-        for (uint64_t i = info->log_zone_num_config; i < zns_dev->tparams.zns_num_zones - 1; i++,ptr += sizeof(uint8_t))
+        for (uint64_t i = info->log_zone_num_config; i < zns_dev->tparams.zns_num_zones - 1; i++, ptr += sizeof(uint8_t))
         {
-            *(uint8_t *)(buffer+ptr) = info->zone_states[i];
+            *(uint8_t *)(buffer + ptr) = info->zone_states[i];
         }
 
         uint32_t log_mapping_size = log_mapping.size();
-        *(uint32_t *) (buffer+ptr) = log_mapping_size;
+        *(uint32_t *)(buffer + ptr) = log_mapping_size;
 
         uint32_t data_mapping_size = data_mapping.size();
-        *(uint32_t *) (buffer+(ptr+=sizeof(uint32_t))) = data_mapping_size;
-        ptr+=sizeof(uint32_t);
+        *(uint32_t *)(buffer + (ptr += sizeof(uint32_t))) = data_mapping_size;
+        ptr += sizeof(uint32_t);
 
         for (auto iter = log_mapping.begin(); iter != log_mapping.end(); iter++, ptr += sizeof(int64_t))
         {
             *(uint64_t *)(buffer + ptr) = iter->first;
-            *(uint64_t *)(buffer + (ptr+=sizeof(int64_t))) = iter->second;
+            *(uint64_t *)(buffer + (ptr += sizeof(int64_t))) = iter->second;
         }
 
         for (auto iter = data_mapping.begin(); iter != data_mapping.end(); iter++, ptr += sizeof(int64_t))
         {
             *(uint64_t *)(buffer + ptr) = iter->first;
-            *(uint64_t *)(buffer + (ptr+=sizeof(int64_t))) = iter->second;
+            *(uint64_t *)(buffer + (ptr += sizeof(int64_t))) = iter->second;
         }
 
-        *(uint32_t *) (buffer) = ptr;
+        *(uint32_t *)(buffer) = ptr;
 
-        metadata_write(info, buffer, roundup(ptr,lsb));
+        metadata_write(info, buffer, roundup(ptr, lsb));
 
         return 0;
     }
@@ -227,7 +232,7 @@ extern "C"
     // find the next empty zone address
     int find_next_empty_zone()
     {
-        for (uint64_t i = zns_dev_ex->log_zone_num_config; i < zns_dev->tparams.zns_num_zones-1; i++)
+        for (uint64_t i = zns_dev_ex->log_zone_num_config; i < zns_dev->tparams.zns_num_zones - 1; i++)
         {
             if (zns_dev_ex->zone_states[i] == EMPTY)
             {
@@ -237,7 +242,7 @@ extern "C"
         return -1;
     }
 
-    int do_merge(std::unordered_map<int64_t, std::unordered_map<int64_t, int64_t>*> *zone_sets_ptr)
+    int do_merge(std::unordered_map<int64_t, std::unordered_map<int64_t, int64_t> *> *zone_sets_ptr)
     {
         auto zone_set = *zone_sets_ptr;
 
@@ -268,7 +273,7 @@ extern "C"
                 zns_dev_ex->zone_states[data_mapping[iter->first] / nlb] = EMPTY;
                 old_zone = data_mapping[iter->first];
             }
-            
+
             auto map = *(iter->second);
             auto ii = map.begin();
             for (ii; ii != map.end(); ii++)
@@ -297,7 +302,7 @@ extern "C"
                 zns_dev_ex->zone_states[old_zone / nlb] = FULL;
                 // nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, zone_no, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             }
-            else 
+            else
             {
                 ret = ss_nvme_device_io_with_mdts(zone_no, buffer, nlb * lsb, false);
                 if (ret)
@@ -335,7 +340,7 @@ extern "C"
                 break;
             }
 
-            std::unordered_map<int64_t, std::unordered_map<int64_t, int64_t>*> zone_sets;
+            std::unordered_map<int64_t, std::unordered_map<int64_t, int64_t> *> zone_sets;
             std::unordered_map<int64_t, int64_t>::iterator iter;
             for (iter = log_mapping.begin(); iter != log_mapping.end(); iter++)
             {
@@ -474,8 +479,8 @@ extern "C"
         zns_dev = *my_dev;
         zns_dev_ex = info;
 
-        //read log_mapping data_mapping zns_device_extra_info
-        //if log zone number < 512, one zone reserve for metadata_zone is enough
+        // read log_mapping data_mapping zns_device_extra_info
+        // if log zone number < 512, one zone reserve for metadata_zone is enough
         ret = init_descriptor(info);
 
         return 0;
@@ -508,9 +513,10 @@ extern "C"
                 uint64_t zone_no = address_2_zone(i);
                 if (!map_contains(data_mapping, zone_no))
                 {
-                    // nothing at this address, return 0s.
-                    memset(buffer, 0, size);
-                    return 0;
+                    // nothing at this address
+                    memset(buffer + num_read, 0, lba_s);
+                    num_read += lba_s;
+                    continue;
                 }
 
                 entry = data_mapping[zone_no] + address_2_offset(i);

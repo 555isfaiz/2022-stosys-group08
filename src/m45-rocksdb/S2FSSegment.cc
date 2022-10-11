@@ -433,7 +433,7 @@ namespace ROCKSDB_NAMESPACE
             if (!id && !offset)
                 break;
             _inode_map[id] = offset;
-            _blocks[addr_2_block(offset)] = new S2FSBlock();
+            _blocks[addr_2_inseg_offset(offset)] = new S2FSBlock();
         }
     }
 
@@ -469,21 +469,23 @@ namespace ROCKSDB_NAMESPACE
         Preload(buffer);
         Unlock();
         uint64_t ptr = _reserve_for_inode * S2FSBlock::Size();
-        for (auto iter = _blocks.begin(); iter != _blocks.end();iter++)
+        while (ptr < S2FSSegment::Size())
         {      
-            if (!iter->second)
-            {
-                auto ii = iter;
-                ii++;
-                ptr += ii->first - iter->first;
-                continue;
-            }
-            S2FSBlock *block = iter->second; 
+            S2FSBlock *block; 
+            if (!map_contains(_blocks, ptr))
+                block = new S2FSBlock;
+            else
+                block = _blocks[ptr];
+
             //block->WriteLock();
             auto ssize = block->Deserialize(buffer + ptr);
             //block->Unlock();
             if (block->Type() == 0)
+            {
                 delete block;
+                while (!buffer[ptr++] && ptr < S2FSSegment::Size()) {}
+                continue;
+            }
             else
             {
                 block->SegmentAddr(_addr_start);

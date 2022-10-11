@@ -54,7 +54,7 @@ namespace ROCKSDB_NAMESPACE
         _next = *(uint64_t *)(buffer + (ptr += 1));
         _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
-        ptr += sizeof(uint64_t);
+        // ptr += sizeof(uint64_t);
         //bugs looks like here, plan to add a length instead of 0
         uint64_t length = *(uint64_t *)(buffer+ptr);
         ptr += sizeof(uint64_t);
@@ -91,10 +91,10 @@ namespace ROCKSDB_NAMESPACE
         _next = *(uint64_t *)(buffer + (ptr += 1));
         _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
-        uint32_t str_len = strlen(buffer + (ptr += sizeof(uint64_t)));
+        uint32_t str_len = strlen(buffer + (ptr + sizeof(uint64_t)));
         _name = std::string(buffer + (ptr += sizeof(uint64_t)), (str_len < MAX_NAME_LENGTH ? str_len : MAX_NAME_LENGTH));
         ptr += MAX_NAME_LENGTH;
-        uint64_t length = *(uint64_t *)(buffer + ptr );
+        uint64_t length = *(uint64_t *)(buffer + ptr);
         ptr += sizeof(uint64_t);
         while (length--)
         {
@@ -109,9 +109,6 @@ namespace ROCKSDB_NAMESPACE
         *buffer = _type<<4;
         *(uint64_t *)(buffer + 1) = _content_size;
         uint64_t ptr = 9;
-        uint64_t length = _file_attrs.size();
-        *(uint64_t *)(buffer + ptr) = length;
-        ptr+=sizeof(uint64_t);
         for (auto fa : _file_attrs)
         {
             ptr += fa->Serialize(buffer + ptr);
@@ -123,9 +120,7 @@ namespace ROCKSDB_NAMESPACE
     {
         uint64_t ptr = 9;
         _content_size = *(uint64_t *)(buffer + 1);
-        uint64_t length = *(uint64_t *)(buffer + ptr );
-        ptr+=sizeof(uint64_t);
-        for (size_t i = 0; i < length; i++)
+        while (ptr < _content_size - 9)
         {
             S2FSFileAttr *fa = new S2FSFileAttr;
             auto size = fa->Deserialize(buffer + ptr);
@@ -192,7 +187,7 @@ namespace ROCKSDB_NAMESPACE
             _type = ITYPE_DIR_DATA;
             return DeserializeDirData(buffer);
         case 0:
-            // _type = ITYPE_UNKNOWN;
+            _type = ITYPE_UNKNOWN;
             break;
 
         default:
