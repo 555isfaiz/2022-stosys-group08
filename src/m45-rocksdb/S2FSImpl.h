@@ -104,13 +104,11 @@ namespace ROCKSDB_NAMESPACE
     {
     private:
         S2FSBlock *_inode;
-
+        char *_buffer;
+        uint64_t _size;
     public:
-        S2FSRandomAccessFile(S2FSBlock *inode)
-            : _inode(inode)
-        {
-        }
-        ~S2FSRandomAccessFile() {}
+        S2FSRandomAccessFile(S2FSBlock *inode, S2FSBlock *parent);
+        ~S2FSRandomAccessFile() { free(_buffer); }
 
         virtual IOStatus Read(uint64_t offset, size_t n, const IOOptions &options,
                               Slice *result, char *scratch,
@@ -123,13 +121,12 @@ namespace ROCKSDB_NAMESPACE
         S2FSBlock *_inode;
         int64_t _offset_pointer = 0;
         int64_t _eof = 0;
+        char *_buffer;
+        uint64_t _size;
         // TODO: lock for offset
     public:
-        S2FSSequentialFile(S2FSBlock *inode)
-            : _inode(inode)
-        {
-        }
-        ~S2FSSequentialFile() {}
+        S2FSSequentialFile(S2FSBlock *inode, S2FSBlock *parent);
+        ~S2FSSequentialFile() { free(_buffer); }
 
         virtual IOStatus Read(size_t n, const IOOptions &options,
                               Slice *result, char *scratch,

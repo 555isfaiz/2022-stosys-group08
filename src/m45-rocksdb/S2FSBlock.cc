@@ -686,6 +686,56 @@ namespace ROCKSDB_NAMESPACE
         return res;
     }
 
+    uint64_t S2FSBlock::GetFileSize(uint64_t child_id)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: I am not dir inode, can't do this. My type: " << _type << " during S2FSBlock::RenameChild."
+                      << "\n";
+            return 0;
+        }
+
+        WriteLock();
+        LivenessCheck();
+
+        uint64_t res = 0;
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            for (auto attr : data->FileAttrs())
+            {
+                if (attr->InodeID() == child_id)
+                {
+                    res = attr->Size();
+                    data->Unlock();
+                    s->Unlock();
+                    Unlock();
+                    return res;
+                }
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            res = in->GetFileSize(child_id);
+        }
+
+        Unlock();
+        return res;
+    }
+
     int S2FSBlock::Offload()
     {
         if (!_loaded)

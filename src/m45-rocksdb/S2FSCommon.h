@@ -206,6 +206,7 @@ namespace ROCKSDB_NAMESPACE
         void FreeChild(const std::string &name);
         void AddFileSize(uint64_t child_id, uint64_t size);
         uint64_t GetFileSize(const std::string &name);
+        uint64_t GetFileSize(uint64_t child_id);
         // No locking inside
         int Offload();
         uint64_t ActualSize();

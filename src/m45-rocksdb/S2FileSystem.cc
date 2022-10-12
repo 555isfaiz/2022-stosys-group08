@@ -331,7 +331,9 @@ namespace ROCKSDB_NAMESPACE
          auto r = _FileExists(fname, false, &inode);
         if (!r.ok())
             return r;
-        result->reset(new S2FSSequentialFile(inode));
+        S2FSBlock *parent;
+        _FileExists(fname, true, &parent);
+        result->reset(new S2FSSequentialFile(inode, parent));
         return IOStatus::OK();
     }
 
@@ -356,7 +358,9 @@ namespace ROCKSDB_NAMESPACE
         auto r = _FileExists(fname, false, &inode);
         if (!r.ok())
             return r;
-        result->reset(new S2FSRandomAccessFile(inode));
+        S2FSBlock *parent;
+        _FileExists(fname, true, &parent);
+        result->reset(new S2FSRandomAccessFile(inode, parent));
         return IOStatus::OK();
     }
 

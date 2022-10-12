@@ -2,6 +2,22 @@
 
 namespace ROCKSDB_NAMESPACE
 {
+    S2FSSequentialFile::S2FSSequentialFile(S2FSBlock *inode, S2FSBlock *parent)
+        : _inode(inode)
+    {
+        _size = parent->GetFileSize(_inode->ID());
+        _buffer = (char *)calloc(_size, sizeof(char));
+        _inode->Read(_buffer, _size, 0, 0);
+    }
+
+    S2FSRandomAccessFile::S2FSRandomAccessFile(S2FSBlock *inode, S2FSBlock *parent)
+        : _inode(inode)
+    {
+        _size = parent->GetFileSize(_inode->ID());
+        _buffer = (char *)calloc(_size, sizeof(char));
+        _inode->Read(_buffer, _size, 0, 0);
+    }
+
     int S2FSFileLock::Lock()
     {
         pthread_mutex_lock(&_inner_mutex);
@@ -45,12 +61,15 @@ namespace ROCKSDB_NAMESPACE
                                         Slice *result, char *scratch,
                                         IODebugContext *dbg) const
     {
-        auto read_num = _inode->Read(scratch, n, offset, 0);
-
-        if (read_num < n)
+        if (offset >= _size)
         {
-            read_num += 1;
-        }       
+            *result = Slice(scratch, 0);
+            return IOStatus::OK();
+        }
+
+        auto read_num = (_size - offset) > n ? n : (_size - offset);
+
+        memcpy(scratch, _buffer + offset, read_num);
         *result = Slice(scratch, read_num);
 
         return IOStatus::OK();
@@ -60,16 +79,19 @@ namespace ROCKSDB_NAMESPACE
                                       Slice *result, char *scratch,
                                       IODebugContext *dbg)
     {
-        auto read_num = _inode->Read(scratch, n, _offset_pointer, 0);
+        if (_offset_pointer >= _size)
+        {
+            *result = Slice(scratch, 0);
+            return IOStatus::OK();
+        }
         
+        auto read_num = (_size - _offset_pointer) > n ? n : (_size - _offset_pointer);
+
+        memcpy(scratch, _buffer + _offset_pointer, read_num);
+        *result = Slice(scratch, read_num);
+
         Skip(read_num);
 
-        if(read_num == 0 && _eof == 0)
-        {
-            _eof = 1;
-        }
-
-        *result = Slice(scratch, read_num);
         return IOStatus::OK();
     }
 
