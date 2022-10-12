@@ -230,6 +230,7 @@ namespace ROCKSDB_NAMESPACE
         uint64_t _cur_size;
         char *_buffer;
         uint64_t _last_modify;
+        bool _loaded;
     public:
         S2FSSegment(uint64_t addr);
         ~S2FSSegment();
@@ -270,6 +271,8 @@ namespace ROCKSDB_NAMESPACE
         inline char *Buffer() { return _buffer; }
         inline uint64_t LastModify() { return _last_modify; }
         inline void LastModify(uint64_t last_modify) { _last_modify = last_modify; }
+        inline void Loaded(bool loaded)                         { _loaded = loaded; }
+        inline bool Loaded()                                    { return _loaded; }
 
         static uint64_t Size();
     };

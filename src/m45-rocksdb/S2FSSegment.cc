@@ -5,6 +5,7 @@ namespace ROCKSDB_NAMESPACE
     S2FSSegment::S2FSSegment(uint64_t addr)
     : _addr_start(addr),
     _buffer(0),
+    _loaded(false),
     _cur_size(S2FSBlock::Size())
     {
         // hope this would always be 1...
@@ -27,6 +28,9 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSBlock *S2FSSegment::GetBlockByOffset(uint64_t offset)
     {
+        if (!_loaded)
+            _fs->LoadSegmentFromDisk(_addr_start);
+
         if (!map_contains(_blocks, offset))
             return NULL;
 
@@ -236,7 +240,7 @@ namespace ROCKSDB_NAMESPACE
             inode = inodes.back();
             segment = segments.back();
             segment->RemoveINode(inode->ID());
-            // segment->Flush();
+            segment->Flush();
             if (unlocked_segments.find(segment) == unlocked_segments.end())
             {
                 segment->Unlock();
@@ -266,6 +270,9 @@ namespace ROCKSDB_NAMESPACE
             off += sizeof(uint64_t);
         }
 
+        *(uint64_t *)(_buffer + off) = _cur_size;
+        off += sizeof(uint64_t);
+
         for (auto iter = _inode_map.begin(); iter != _inode_map.end() && off < size; off += INODE_MAP_ENTRY_LENGTH, iter++)
         {
             *(uint64_t *)(_buffer + off) = iter->first;
@@ -275,17 +282,14 @@ namespace ROCKSDB_NAMESPACE
         for (auto iter = _blocks.begin(); iter != _blocks.end(); iter++)
         {
             if (!iter->second||iter->second->Type()==0)
-            {
-                auto ii = iter;
-                ii++;
-                size += ii->first - iter->first;
                 continue;
-            }
+
+            size = iter->second->GlobalOffset() - _addr_start;
             size += iter->second->Serialize(_buffer + size);
         }
 
         size = round_up(size, S2FSBlock::Size());
-        for (size_t i = _addr_start; i < size; i += S2FSBlock::Size())
+        for (size_t i = _addr_start; i < _addr_start + size; i += S2FSBlock::Size())
         {
             int ret = zns_udevice_write(_fs->_zns_dev, i, _buffer + i - _addr_start, S2FSBlock::Size());
             if (ret)
@@ -330,6 +334,7 @@ namespace ROCKSDB_NAMESPACE
 
         free(_buffer);
         _buffer = 0;
+        _loaded = false;
         return 0;
     }
 
@@ -439,12 +444,18 @@ namespace ROCKSDB_NAMESPACE
 
     void S2FSSegment::Preload(char *buffer)
     {
+        if (!*(uint64_t *)(buffer))
+            return;
+
         uint32_t c = 0;
         if (!_addr_start)
         {
             id_alloc = *(uint64_t *)(buffer);
             c += sizeof(uint64_t);
         }
+        _cur_size = *(uint64_t *)(buffer + c);
+        c += sizeof(uint64_t);
+
         for (c; c < _reserve_for_inode * S2FSBlock::Size(); c += INODE_MAP_ENTRY_LENGTH)
         {
             uint64_t id = *(uint64_t *)(buffer + c);
@@ -452,7 +463,7 @@ namespace ROCKSDB_NAMESPACE
             if (!id && !offset)
                 break;
             _inode_map[id] = offset;
-            // _blocks[addr_2_inseg_offset(offset)] = new S2FSBlock();
+            // _blocks[addr_2_inseg_offset(offset)] = new S2FSBlock;
         }
     }
 
@@ -465,6 +476,9 @@ namespace ROCKSDB_NAMESPACE
             *(uint64_t *)(buffer) = id_alloc;
             off += sizeof(uint64_t);
         }
+
+        *(uint64_t *)(buffer + off) = _cur_size;
+        off += sizeof(uint64_t);
 
         for (auto iter = _inode_map.begin(); iter != _inode_map.end() && off < size; off += INODE_MAP_ENTRY_LENGTH, iter++)
         {
@@ -490,7 +504,7 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSSegment::Deserialize(char *buffer)
     {
-        WriteLock();
+        // WriteLock();
         Preload(buffer);
         uint64_t ptr = _reserve_for_inode * S2FSBlock::Size(), last = 0;
 
@@ -503,12 +517,12 @@ namespace ROCKSDB_NAMESPACE
             if (!map_contains(_blocks, ptr))
             {
                 block = new S2FSBlock;
-                block->Content(_buffer + ptr + 9);
                 _blocks[ptr] = block;
             }
             else
-                block = _blocks[ptr];
+                block = _blocks.at(ptr);
 
+            block->Content(_buffer + ptr + 9);
             //block->WriteLock();
             auto ssize = block->Deserialize(buffer + ptr);
             //block->Unlock();
@@ -524,6 +538,7 @@ namespace ROCKSDB_NAMESPACE
                 last = ptr;
                 block->SegmentAddr(_addr_start);
                 block->GlobalOffset(_addr_start + ptr);
+                block->Loaded(true);
                 if (block->Type() == ITYPE_DIR_DATA)
                 {
                     for (auto fa : block->FileAttrs())
@@ -541,8 +556,8 @@ namespace ROCKSDB_NAMESPACE
             }
             ptr += ssize;
         }
-        _cur_size = last + _blocks[last]->ActualSize();
-        Unlock();
+        // _cur_size = last + _blocks[last]->ActualSize();
+        // Unlock();
         return S2FSSegment::Size();
     }
 }

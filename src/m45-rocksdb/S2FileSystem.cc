@@ -106,6 +106,8 @@ namespace ROCKSDB_NAMESPACE
             }
 
             s->Preload(buf);
+            if (s->CurSize() == S2FSBlock::Size())
+                s->Loaded(true);
             _cache[segm_start] = s;
 
             // First segment is empty. So we have a brand new flash here.
@@ -179,7 +181,7 @@ namespace ROCKSDB_NAMESPACE
 
     S2FSSegment *S2FileSystem::LoadSegmentFromDisk(uint64_t from)
     {
-        uint64_t segm_start = segment_2_addr(addr_2_segment(from));
+        uint64_t segm_start = from;
         S2FSSegment *s = _cache[segm_start];
         // if (s)
         //     return s;
@@ -192,6 +194,7 @@ namespace ROCKSDB_NAMESPACE
             return NULL;
         }
         s->Deserialize(buf);
+        s->Loaded(true);
 
         return s;
     }
@@ -380,7 +383,7 @@ namespace ROCKSDB_NAMESPACE
                                            std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        std::cout << " new file: " << fname << std::endl;
+        // std::cout << " new file: " << fname << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
         if (_FileExists(fname, true, &inode).ok())
@@ -561,7 +564,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::DeleteFile(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        std::cout << " delete file: " << fname << std::endl;
+        // std::cout << " delete file: " << fname << std::endl;
         S2FSBlock *inode;
         if (!_FileExists(fname, true, &inode).ok())
         {
@@ -677,7 +680,7 @@ namespace ROCKSDB_NAMESPACE
                                       IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        std::cout << " rename file, from: " << src << " to: " << target << std::endl;
+        // std::cout << " rename file, from: " << src << " to: " << target << std::endl;
         S2FSBlock *old_parent;
         if (_FileExists(src, true, &old_parent).IsNotFound())
             return IOStatus::NotFound();
