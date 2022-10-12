@@ -375,7 +375,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewWritableFile(const std::string &fname, const FileOptions &file_opts,
                                            std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
     {
-        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
+        std::cout << " new file: " << fname << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
         if (_FileExists(fname, false, &inode).ok())
@@ -671,11 +671,18 @@ namespace ROCKSDB_NAMESPACE
                                       IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        S2FSBlock *inode;
-        if (_FileExists(src, true, &inode).IsNotFound())
+        std::cout << " rename file, from: " << src << " to: " << target << std::endl;
+        S2FSBlock *old_parent;
+        if (_FileExists(src, true, &old_parent).IsNotFound())
             return IOStatus::NotFound();
 
-        inode->RenameChild(strip_name(src, _fs_delimiter), strip_name(target, _fs_delimiter));
+        S2FSBlock *new_parent;
+        if (_FileExists(target, true, &new_parent).ok())
+            new_parent->FreeChild(strip_name(target, _fs_delimiter));
+
+        // assuming the src and target are in the same directory
+        // this is enough for tests, but that's not how it should really work
+        old_parent->RenameChild(strip_name(src, _fs_delimiter), strip_name(target, _fs_delimiter));
         return IOStatus::OK();
     }
 
