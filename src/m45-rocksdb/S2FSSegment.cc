@@ -110,7 +110,8 @@ namespace ROCKSDB_NAMESPACE
         inode = new S2FSBlock(type, _addr_start, 0, NULL);
         inode->GlobalOffset(_addr_start + _cur_size);
         _blocks[_cur_size] = inode;
-        _name_2_inode[name] = inode->ID();
+        if (!name.empty())
+            _name_2_inode[name] = inode->ID();
         _inode_map[inode->ID()] = _cur_size;
         _cur_size += S2FSBlock::Size();
 
@@ -214,6 +215,7 @@ namespace ROCKSDB_NAMESPACE
         LastModify(microseconds_since_epoch());
         std::list<S2FSBlock *> inodes;
         std::list<S2FSSegment *> segments;
+        std::set<S2FSSegment *> unlocked_segments;
         uint64_t off = _inode_map.at(inode_id);
         auto inode = GetBlockByOffset(off);
         auto segment = this;
@@ -234,8 +236,12 @@ namespace ROCKSDB_NAMESPACE
             inode = inodes.back();
             segment = segments.back();
             segment->RemoveINode(inode->ID());
-            segment->Flush();
-            segment->Unlock();
+            // segment->Flush();
+            if (unlocked_segments.find(segment) == unlocked_segments.end())
+            {
+                segment->Unlock();
+                unlocked_segments.emplace(segment);
+            }
             inode->Unlock();
             delete inode;
             inodes.pop_back();
@@ -253,6 +259,7 @@ namespace ROCKSDB_NAMESPACE
             return 0;
 
         uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
+        memset(_buffer, 0, size);
         if (!_addr_start)
         {
             *(uint64_t *)(_buffer) = id_alloc;
@@ -445,7 +452,7 @@ namespace ROCKSDB_NAMESPACE
             if (!id && !offset)
                 break;
             _inode_map[id] = offset;
-            _blocks[addr_2_inseg_offset(offset)] = new S2FSBlock();
+            // _blocks[addr_2_inseg_offset(offset)] = new S2FSBlock();
         }
     }
 
@@ -509,7 +516,7 @@ namespace ROCKSDB_NAMESPACE
             {
                 _blocks.erase(ptr);
                 delete block;
-                while (!buffer[ptr++] && ptr < S2FSSegment::Size()) {}
+                while (ptr < S2FSSegment::Size() && !buffer[ptr]) { ptr++; }
                 continue;
             }
             else

@@ -55,7 +55,6 @@ namespace ROCKSDB_NAMESPACE
         _prev = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         _id = *(uint64_t *)(buffer + (ptr += sizeof(uint64_t)));
         ptr += sizeof(uint64_t);
-        //bugs looks like here, plan to add a length instead of 0
         uint64_t length = *(uint64_t *)(buffer+ptr);
         ptr += sizeof(uint64_t);
         while (length--)       
@@ -140,12 +139,15 @@ namespace ROCKSDB_NAMESPACE
         switch (_type)
         {
         case ITYPE_DIR_INODE:
+            memset(buffer, 0, ActualSize());
             return SerializeDirInode(buffer);
 
         case ITYPE_DIR_DATA:
+            memset(buffer, 0, ActualSize());
             return SerializeDirData(buffer);
 
         case ITYPE_FILE_INODE:
+            memset(buffer, 0, ActualSize());
             return SerializeFileInode(buffer);
 
         case ITYPE_FILE_DATA:
@@ -302,7 +304,7 @@ namespace ROCKSDB_NAMESPACE
 
         if (!data_block || (data_block->FileAttrs().size() + 1) * FILE_ATTR_SIZE > data_block->ContentSize())
         {
-            uint64_t to_allocate = S2FSBlock::MaxDataSize(ITYPE_DIR_INODE);
+            uint64_t to_allocate = S2FSBlock::MaxDataSize(ITYPE_DIR_DATA);
             do
             {
                 int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_DIR_DATA, NULL, to_allocate, &data_block);
@@ -363,8 +365,11 @@ namespace ROCKSDB_NAMESPACE
         uint64_t io_num = 0;
         while (io_num < len)
         {
-            int64_t tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + io_num, len - io_num, &data_block);
-            // this segment is full, allocate new in next segment
+            int64_t tmp = -1;
+            if ((inode->Offsets().size() + 1) * sizeof(uint64_t) <= S2FSBlock::MaxDataSize(ITYPE_FILE_INODE))
+                tmp = segment->AllocateData(inode->ID(), ITYPE_FILE_DATA, data + io_num, len - io_num, &data_block);
+
+            // the file inode or this segment is full, allocate new in next segment
             if (tmp < 0)
             {
                 segment = _fs->FindNonFullSegment();
@@ -414,7 +419,7 @@ namespace ROCKSDB_NAMESPACE
             {
                 uint64_t in_block_off = (cur_off > offset ? 0 : offset - cur_off), max_readable = data_block->ContentSize() - in_block_off;
                 
-                uint64_t to_read = max_readable >= n ? n : max_readable;
+                uint64_t to_read = max_readable >= (n - total_read) ? (n - total_read) : max_readable;
                 memcpy(buf + buf_off, data_block->Content() + in_block_off, to_read);
                 buf_off += to_read;
                 read_num += to_read;
@@ -431,7 +436,7 @@ namespace ROCKSDB_NAMESPACE
             s->WriteLock();
             auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
             s->Unlock();
-            total_read += in->Read(buf, n - read_num, offset - cur_off, buf_off);
+            total_read += in->Read(buf, n - read_num, offset > cur_off ? offset - cur_off : 0, buf_off);
         }
 
         Unlock();
@@ -547,7 +552,6 @@ namespace ROCKSDB_NAMESPACE
     {
         WriteLock();
         LivenessCheck();
-        S2FSBlock *res = NULL;
         for (auto off : _offsets)
         {
             S2FSBlock *data;
@@ -581,6 +585,105 @@ namespace ROCKSDB_NAMESPACE
             in->FreeChild(name);
         }
         Unlock();
+    }
+
+    void S2FSBlock::AddFileSize(uint64_t child_id, uint64_t size)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: I am not dir inode, can't do this. My type: " << _type << " during S2FSBlock::RenameChild."
+                      << "\n";
+            return;
+        }
+
+        WriteLock();
+        LivenessCheck();
+
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            for (auto attr : data->FileAttrs())
+            {
+                if (attr->InodeID() == child_id)
+                {
+                    attr->Size(attr->Size() + size);
+                    s->Flush(addr_2_inseg_offset(data->GlobalOffset()));
+                    data->Unlock();
+                    s->Unlock();
+                    Unlock();
+                    return;
+                }
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            in->AddFileSize(child_id, size);
+        }
+
+        Unlock();
+    }
+
+    uint64_t S2FSBlock::GetFileSize(const std::string &name)
+    {
+        if (_type != ITYPE_DIR_INODE)
+        {
+            std::cout << "Error: I am not dir inode, can't do this. My type: " << _type << " during S2FSBlock::RenameChild."
+                      << "\n";
+            return 0;
+        }
+
+        WriteLock();
+        LivenessCheck();
+
+        uint64_t res = 0;
+        for (auto off : _offsets)
+        {
+            S2FSBlock *data;
+            auto s = _fs->ReadSegment(addr_2_segment(off));
+            s->WriteLock();
+            data = s->GetBlockByOffset(off);
+
+            data->ReadLock();
+            for (auto attr : data->FileAttrs())
+            {
+                if (attr->Name() == name)
+                {
+                    res = attr->Size();
+                    data->Unlock();
+                    s->Unlock();
+                    Unlock();
+                    return res;
+                }
+            }
+
+            s->Unlock();
+            data->Unlock();
+        }
+
+        if (_next)
+        {
+            auto s = _fs->ReadSegment(addr_2_segment(_next));
+            s->WriteLock();
+            auto in = s->GetBlockByOffset(addr_2_inseg_offset(_next));
+            s->Unlock();
+            res = in->GetFileSize(name);
+        }
+
+        Unlock();
+        return res;
     }
 
     int S2FSBlock::Offload()
@@ -641,13 +744,21 @@ namespace ROCKSDB_NAMESPACE
 
     uint64_t S2FSBlock::MaxDataSize(INodeType type)
     {
-        if (type == ITYPE_DIR_INODE)
+        if (type == ITYPE_DIR_DATA)
+        {
+            return S2FSBlock::Size() - 9;
+        }
+        else if (type == ITYPE_FILE_DATA)
         {
             return S2FSBlock::Size() - 9;
         }
         else if (type == ITYPE_FILE_INODE)
         {
-            return S2FSBlock::Size() - 9;
+            return S2FSBlock::Size() - 40;
+        }
+        else if (type == ITYPE_DIR_INODE)
+        {
+            return S2FSBlock::Size() - 72;
         }
         else
             return 0;

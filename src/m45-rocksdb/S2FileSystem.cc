@@ -375,15 +375,12 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::NewWritableFile(const std::string &fname, const FileOptions &file_opts,
                                            std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
     {
+        // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         std::cout << " new file: " << fname << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
-        if (_FileExists(fname, false, &inode).ok())
-        {
-            s = ReadSegment(inode->SegmentAddr());
-            s->Free(inode->ID());
-            _FileExists(fname, false, &inode); // set inode to the parent dir
-        }
+        if (_FileExists(fname, true, &inode).ok())
+            inode->FreeChild(strip_name(fname, _fs_delimiter));
 
         bool allocated = false;
         S2FSBlock *new_inode;
@@ -398,7 +395,7 @@ namespace ROCKSDB_NAMESPACE
 
         if (allocated)
         {
-            result->reset(new S2FSWritableFile(new_inode));
+            result->reset(new S2FSWritableFile(new_inode, inode));
             return IOStatus::OK();
         }
         else
@@ -512,7 +509,13 @@ namespace ROCKSDB_NAMESPACE
     S2FileSystem::GetFileSize(const std::string &fname, const IOOptions &options, uint64_t *file_size, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        return IOStatus::IOError(__FUNCTION__);
+        S2FSBlock *inode;
+        auto r = _FileExists(fname, true, &inode);
+        if (!r.ok())
+            return r;
+        
+        *file_size = inode->GetFileSize(strip_name(fname, _fs_delimiter));
+        return IOStatus::OK();
     }
 
     IOStatus S2FileSystem::DeleteDir(const std::string &dirname, const IOOptions &options, IODebugContext *dbg)
@@ -556,7 +559,6 @@ namespace ROCKSDB_NAMESPACE
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         std::cout << " delete file: " << fname << std::endl;
         S2FSBlock *inode;
-        S2FSSegment *s;
         if (!_FileExists(fname, true, &inode).ok())
         {
             return IOStatus::NotFound(__FUNCTION__);
@@ -706,7 +708,7 @@ namespace ROCKSDB_NAMESPACE
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
         S2FSBlock *inode;
-        auto r = _FileExists(dir, true, &inode);
+        auto r = _FileExists(dir, false, &inode);
         if (!r.ok())
             return r;
 

@@ -55,9 +55,11 @@ namespace ROCKSDB_NAMESPACE
     {
     private:
         S2FSBlock *_inode;
+        S2FSBlock *_parent;
     public:
-        S2FSWritableFile(S2FSBlock *inode) 
-        : _inode(inode)
+        S2FSWritableFile(S2FSBlock *inode, S2FSBlock *parent) 
+        : _inode(inode),
+        _parent(parent)
         {}
         ~S2FSWritableFile() {}
         // Append data to the end of the file

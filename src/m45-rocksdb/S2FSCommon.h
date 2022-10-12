@@ -14,6 +14,7 @@
 #include <vector>
 #include <unordered_map>
 #include <map>
+#include <set>
 #include <pthread.h>
 #include <zns_device.h>
 
@@ -203,6 +204,8 @@ namespace ROCKSDB_NAMESPACE
         int ReadChildren(std::vector<std::string> *list);
         void RenameChild(const std::string &src, const std::string &target);
         void FreeChild(const std::string &name);
+        void AddFileSize(uint64_t child_id, uint64_t size);
+        uint64_t GetFileSize(const std::string &name);
         // No locking inside
         int Offload();
         uint64_t ActualSize();

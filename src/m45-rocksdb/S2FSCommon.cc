@@ -9,7 +9,7 @@ namespace ROCKSDB_NAMESPACE
         strcpy(buffer, _name.c_str());
         uint64_t ptr = MAX_NAME_LENGTH;
         // Use the highest bit of size to indicate whether it is a directory or not
-        *(uint64_t *)(buffer + ptr) = _is_dir ? (_size & (uint64_t)1 << 63) : _size;
+        *(uint64_t *)(buffer + ptr) = (_is_dir ? (_size | (uint64_t)1 << 63) : _size);
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _create_time;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _offset;
         *(uint64_t *)(buffer + (ptr += sizeof(uint64_t))) = _inode_id;
@@ -24,7 +24,7 @@ namespace ROCKSDB_NAMESPACE
         if (Name().size() == 0)
             return 0;
         IsDir(*(uint64_t *)(buffer + ptr) & ((uint64_t)1 << 63))
-        ->Size(*(uint64_t *)(buffer + ptr) | ((uint64_t)1 << 63))
+        ->Size(*(uint64_t *)(buffer + ptr) & ~((uint64_t)1 << 63))
         ->CreateTime(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
         ->Offset(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))))
         ->InodeID(*(uint64_t *)(buffer + (ptr += sizeof(uint64_t))));

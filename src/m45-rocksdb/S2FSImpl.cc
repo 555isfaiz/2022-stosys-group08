@@ -37,6 +37,7 @@ namespace ROCKSDB_NAMESPACE
         {
             return IOStatus::IOError();
         }
+        _parent->AddFileSize(_inode->ID(), data.size());
         return IOStatus::OK();
     }
 
@@ -48,7 +49,6 @@ namespace ROCKSDB_NAMESPACE
 
         if (read_num < n)
         {
-            // *(scratch + read_num) = '\n';
             read_num += 1;
         }       
         *result = Slice(scratch, read_num);
