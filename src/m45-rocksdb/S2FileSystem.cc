@@ -220,6 +220,7 @@ namespace ROCKSDB_NAMESPACE
         for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
         {
             seg = ReadSegment(i);
+            seg->OnGC();
             seg->ReadLock();
             if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
             {
@@ -227,7 +228,6 @@ namespace ROCKSDB_NAMESPACE
                 return seg;
             }
             seg->Unlock();
-            seg->OnGC();
         }
 
         std::cout << "Disk full"

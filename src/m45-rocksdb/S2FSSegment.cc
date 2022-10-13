@@ -96,12 +96,16 @@ namespace ROCKSDB_NAMESPACE
             return -1;
         }
 
+        if (!_loaded)
+            _fs->LoadSegmentFromDisk(_addr_start);
+
+        WriteLock();
         if (_cur_size + S2FSBlock::Size() >= S2FSSegment::Size())
         {
+            Unlock();
             return -1;
         }
 
-        WriteLock();
         LastModify(microseconds_since_epoch());
         if (!_buffer)
             _buffer = (char *)calloc(S2FSSegment::Size(), sizeof(char));
@@ -146,17 +150,21 @@ namespace ROCKSDB_NAMESPACE
 
     int64_t S2FSSegment::AllocateData(uint64_t inode_id, INodeType type, const char *data, uint64_t size, S2FSBlock **res)
     {
+        if (!_loaded)
+            _fs->LoadSegmentFromDisk(_addr_start);
+
         if (!map_contains(_inode_map, inode_id))
         {
             return -1;
         }
 
+        WriteLock();
         if (_cur_size + 9>= S2FSSegment::Size())
         {
+            Unlock();
             return -1;
         }
 
-        WriteLock();
         LastModify(microseconds_since_epoch());
         if (!_buffer)
             _buffer = (char *)calloc(S2FSSegment::Size(), sizeof(char));
@@ -169,6 +177,7 @@ namespace ROCKSDB_NAMESPACE
         _blocks[_cur_size] = data_block;
         if (data)
         {
+            // std::cout<<"cur size: "<<_cur_size<<" to copy: "<<to_copy<<std::endl;
             memcpy(data_block->Content(), data, to_copy);
         }
         _cur_size += to_copy + 9;
@@ -185,7 +194,12 @@ namespace ROCKSDB_NAMESPACE
     int S2FSSegment::RemoveINode(uint64_t inode_id)
     {
         LastModify(microseconds_since_epoch());
-        _blocks[_inode_map[inode_id]] = NULL;
+        if (_buffer)
+        {
+            auto inode = _blocks[_inode_map[inode_id]];
+            memset(_buffer + inode->GlobalOffset() - _addr_start, 0, inode->ActualSize());
+        }
+        _blocks.erase(_inode_map[inode_id]);
         _inode_map.erase(inode_id);
         for (auto p : _name_2_inode)
         {
@@ -240,7 +254,7 @@ namespace ROCKSDB_NAMESPACE
             inode = inodes.back();
             segment = segments.back();
             segment->RemoveINode(inode->ID());
-            segment->Flush();
+            segment->Flush(0);
             if (unlocked_segments.find(segment) == unlocked_segments.end())
             {
                 segment->Unlock();
@@ -259,7 +273,10 @@ namespace ROCKSDB_NAMESPACE
 
     int S2FSSegment::Flush()
     {
-        if (_inode_map.empty())
+        if (!_loaded)
+            return 0;
+
+        if (_cur_size == _reserve_for_inode * S2FSBlock::Size())
             return 0;
 
         uint32_t off = 0, size = _reserve_for_inode * S2FSBlock::Size();
@@ -288,6 +305,7 @@ namespace ROCKSDB_NAMESPACE
             size += iter->second->Serialize(_buffer + size);
         }
 
+        memset(_buffer + size, 0, S2FSSegment::Size() - size);
         size = round_up(size, S2FSBlock::Size());
         for (size_t i = _addr_start; i < _addr_start + size; i += S2FSBlock::Size())
         {
@@ -304,7 +322,17 @@ namespace ROCKSDB_NAMESPACE
 
     int S2FSSegment::Flush(uint64_t in_seg_off)
     {
-        uint64_t write_start = in_seg_off / S2FSBlock::Size() * S2FSBlock::Size(), write_end = round_up(in_seg_off + _blocks[in_seg_off]->ActualSize(), S2FSBlock::Size());
+        uint64_t write_start, write_end;
+        if (in_seg_off)
+        {
+            write_start = in_seg_off / S2FSBlock::Size() * S2FSBlock::Size();
+            write_end = round_up(in_seg_off + _blocks[in_seg_off]->ActualSize(), S2FSBlock::Size());
+        }
+        else
+        {
+            write_start = 0;
+            write_end = _reserve_for_inode * S2FSBlock::Size();
+        }
 
         for (size_t i = write_start; i < write_end; i += S2FSBlock::Size())
         {
@@ -384,6 +412,8 @@ namespace ROCKSDB_NAMESPACE
                 if (s != this)
                     s->WriteLock();
                 auto prev = s->GetBlockByOffset(addr_2_inseg_offset(block->Prev()));
+                if (!prev)
+                    prev = new_blocks[addr_2_inseg_offset(block->Prev())];
                 prev->WriteLock();
                 prev->Next(block->GlobalOffset());
                 prev->Unlock();
@@ -403,11 +433,15 @@ namespace ROCKSDB_NAMESPACE
 
                 if (data_block->Type() == ITYPE_FILE_DATA)
                 {
-                    memcpy(_buffer + ptr + 9, data_block->Content(), data_block->ContentSize());
+                    // in case of overlapping, copy to a tmp buffer
+                    char tmp[data_block->ContentSize()] = {0};
+                    memcpy(tmp, data_block->Content(), data_block->ContentSize());
+                    memcpy(_buffer + ptr + 9, tmp, data_block->ContentSize());
                     data_block->Content(_buffer + ptr + 9);
                 }
                 block->AddOffset(ptr);
                 new_blocks[ptr] = data_block;
+                data_block->GlobalOffset(ptr + _addr_start);
                 ptr += data_block->ActualSize();
                 _blocks.erase(addr_2_inseg_offset(off));
             }
@@ -420,12 +454,12 @@ namespace ROCKSDB_NAMESPACE
         {
             if (p.second->Type() == ITYPE_DIR_DATA)
             {
-                p.second->WriteLock();
+                // p.second->WriteLock();
                 for (auto fa : p.second->FileAttrs())
                 {
                     fa->Offset(_inode_map[fa->InodeID()] + _addr_start);
                 }
-                p.second->Unlock();
+                // p.second->Unlock();
             }
         }
 
@@ -436,6 +470,7 @@ namespace ROCKSDB_NAMESPACE
         }
 
         _blocks = new_blocks;
+        _cur_size = ptr;
         
         Offload();
         Unlock();
@@ -511,7 +546,7 @@ namespace ROCKSDB_NAMESPACE
         if (!_buffer)
             _buffer = (char *)calloc(S2FSSegment::Size(), sizeof(char));
 
-        while (ptr < S2FSSegment::Size())
+        while (ptr < _cur_size)
         {      
             S2FSBlock *block; 
             if (!map_contains(_blocks, ptr))
@@ -530,7 +565,7 @@ namespace ROCKSDB_NAMESPACE
             {
                 _blocks.erase(ptr);
                 delete block;
-                while (ptr < S2FSSegment::Size() && !buffer[ptr]) { ptr++; }
+                while (ptr < _cur_size && !buffer[ptr]) { ptr++; }
                 continue;
             }
             else

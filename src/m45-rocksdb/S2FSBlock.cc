@@ -285,6 +285,7 @@ namespace ROCKSDB_NAMESPACE
         WriteLock();
         LivenessCheck();
         auto inode = this;
+        int ret = 0;
         S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
         std::list<S2FSBlock *> inodes;
         inodes.push_back(inode);
@@ -313,7 +314,10 @@ namespace ROCKSDB_NAMESPACE
                 {
                     segment = _fs->FindNonFullSegment();
                     if (!segment)
-                        return -1;
+                    {
+                        ret = -1;
+                        goto ret;
+                    }
 
                     S2FSBlock *res;
                     tmp = segment->AllocateNew("", ITYPE_DIR_INODE, &res, NULL);
@@ -335,6 +339,7 @@ namespace ROCKSDB_NAMESPACE
         data_block->AddFileAttr(fa);
         data_block->Serialize(segment->Buffer() + data_block->GlobalOffset() - segment->Addr());
 
+ret:
         while (!inodes.empty())
         {
             inodes.back()->Unlock();
@@ -348,6 +353,7 @@ namespace ROCKSDB_NAMESPACE
         WriteLock();
         LivenessCheck();
         auto inode = this;
+        int ret = 0;
         S2FSSegment *segment = _fs->ReadSegment(inode->SegmentAddr());
         std::list<S2FSBlock *> inodes;
         inodes.push_back(inode);
@@ -375,14 +381,16 @@ namespace ROCKSDB_NAMESPACE
                 segment = _fs->FindNonFullSegment();
                 if (!segment)
                 {
-                    return -1;
+                    ret = -1;
+                    goto ret;
                 }
 
                 S2FSBlock *res;
                 tmp = segment->AllocateNew("", ITYPE_FILE_INODE, &res, NULL);
                 if (tmp < 0)
                 {
-                    return -1;
+                    ret = -1;
+                    goto ret;
                 }
                 inode->Next(res->GlobalOffset());
                 res->Prev(inode->GlobalOffset());
@@ -394,12 +402,13 @@ namespace ROCKSDB_NAMESPACE
                 io_num += tmp;
         }
 
+ret:
         while (!inodes.empty())
         {
             inodes.back()->Unlock();
             inodes.pop_back();
         }
-        return 0;
+        return ret;
     }
 
     int S2FSBlock::Read(char *buf, uint64_t n, uint64_t offset, uint64_t buf_offset)
