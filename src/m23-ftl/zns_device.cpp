@@ -86,15 +86,15 @@ extern "C"
             return -1;
         }
         int ret;
-        if (zns_dev_ex->zone_states[last_zone] != EMPTY)
-        {
+        // if (zns_dev_ex->zone_states[last_zone] != EMPTY)
+        // {
             ret = nvme_zns_mgmt_send(zns_dev_ex->fd, zns_dev_ex->nsid, last_zone * info->blocks_per_zone, false, NVME_ZNS_ZSA_RESET, 0, NULL);
             if (ret)
             {
                 printf("ERROR: failed to reset at metadata block 0x%lx, ret: %ld \n", (last_zone)*info->blocks_per_zone, ret);
                 return ret;
             }
-        }
+        // }
 
         ret = nvme_zns_append(info->fd, info->nsid, last_zone * info->blocks_per_zone, blocks - 1, 0, 0, 0, 0, size, buffer, 0, NULL, &res_lba);
         if (ret)
