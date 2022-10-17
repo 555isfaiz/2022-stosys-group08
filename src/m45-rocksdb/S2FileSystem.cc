@@ -243,7 +243,7 @@ namespace ROCKSDB_NAMESPACE
 
         std::cout << "Disk full"
                   << "\n";
-        abort();
+        // abort();
         return NULL;
     }
 
