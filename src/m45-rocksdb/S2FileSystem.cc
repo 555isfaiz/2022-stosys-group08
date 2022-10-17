@@ -151,6 +151,11 @@ namespace ROCKSDB_NAMESPACE
 
         for (auto p : _cache)
         {
+            p.second->OnGC();
+        }
+
+        for (auto p : _cache)
+        {
             delete p.second;
         }
         deinit_ss_zns_device(_zns_dev);
@@ -328,7 +333,7 @@ namespace ROCKSDB_NAMESPACE
         if (exist)
             return IOStatus::OK();
         else
-            return IOStatus::NotFound();
+            return IOStatus::NotFound(fname);
     }
 
     // Create a brand new sequentially-readable file with the specified name.
@@ -395,7 +400,7 @@ namespace ROCKSDB_NAMESPACE
                                            std::unique_ptr<FSWritableFile> *result, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        // std::cout << " new file: " << fname << std::endl;
+        std::cout << " new file: " << fname << std::endl;
         S2FSBlock *inode;
         S2FSSegment *s;
         if (_FileExists(fname, true, &inode).ok())
@@ -576,7 +581,7 @@ namespace ROCKSDB_NAMESPACE
     IOStatus S2FileSystem::DeleteFile(const std::string &fname, const IOOptions &options, IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        // std::cout << " delete file: " << fname << std::endl;
+        std::cout << " delete file: " << fname << std::endl;
         S2FSBlock *inode;
         if (!_FileExists(fname, true, &inode).ok())
         {
@@ -692,7 +697,7 @@ namespace ROCKSDB_NAMESPACE
                                       IODebugContext *dbg)
     {
         // std::cout << get_seq_id() << " func: " << __FUNCTION__ << " line: " << __LINE__ << " " << std::endl;
-        // std::cout << " rename file, from: " << src << " to: " << target << std::endl;
+        std::cout << " rename file, from: " << src << " to: " << target << std::endl;
         S2FSBlock *old_parent;
         if (_FileExists(src, true, &old_parent).IsNotFound())
             return IOStatus::NotFound();

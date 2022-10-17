@@ -251,12 +251,15 @@ namespace ROCKSDB_NAMESPACE
                     if (ss != s)
                     {
                         ss->WriteLock();
-                        res = ss->GetBlockByOffset(addr_2_inseg_offset(attr->Offset()));
+                        res = ss->GetBlockByID(attr->InodeID());
                         ss->Unlock();
                     }
                     else
-                        res = ss->GetBlockByOffset(addr_2_inseg_offset(attr->Offset()));
+                        res = ss->GetBlockByID(attr->InodeID());
 
+                    if (attr->Offset() != res->GlobalOffset())
+                        attr->Offset(res->GlobalOffset());
+                        
                     s->Unlock();
                     data->Unlock();
                     Unlock();

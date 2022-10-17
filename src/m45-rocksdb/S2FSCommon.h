@@ -243,6 +243,7 @@ namespace ROCKSDB_NAMESPACE
         // No lock ops in this function, not thread safe
         // Make sure to use WriteLock() before calling this
         S2FSBlock *GetBlockByOffset(uint64_t offset);
+        S2FSBlock *GetBlockByID(uint64_t id);
         // Get inode block by name
         // No lock ops in this function, not thread safe
         // Make sure to use WriteLock() before calling this

@@ -67,6 +67,14 @@ namespace ROCKSDB_NAMESPACE
         return block;
     }
 
+    S2FSBlock *S2FSSegment::GetBlockByID(uint64_t id)
+    {
+        if (!map_contains(_inode_map, id))
+            return NULL;
+
+        return GetBlockByOffset(_inode_map[id]);
+    }
+
     S2FSBlock *S2FSSegment::LookUp(const std::string &name)
     {
         if (map_contains(_name_2_inode, name))
@@ -368,7 +376,7 @@ namespace ROCKSDB_NAMESPACE
 
     int S2FSSegment::OnGC()
     {
-        _fs->LoadSegmentFromDisk(_addr_start);
+        // _fs->LoadSegmentFromDisk(_addr_start);
         WriteLock();
         LastModify(microseconds_since_epoch());
         uint64_t ptr = S2FSBlock::Size();
@@ -447,7 +455,7 @@ namespace ROCKSDB_NAMESPACE
                     memcpy(_buffer + ptr + 9, tmp, data_block->ContentSize());
                     data_block->Content(_buffer + ptr + 9);
                 }
-                block->AddOffset(ptr);
+                block->AddOffset(ptr + _addr_start);
                 new_blocks[ptr] = data_block;
                 data_block->GlobalOffset(ptr + _addr_start);
                 ptr += data_block->ActualSize();
@@ -458,14 +466,15 @@ namespace ROCKSDB_NAMESPACE
         }
 
         // Update the offsets inside the dir data
-        for (auto p : blocks)
+        for (auto p : new_blocks)
         {
             if (p.second->Type() == ITYPE_DIR_DATA)
             {
                 // p.second->WriteLock();
                 for (auto fa : p.second->FileAttrs())
                 {
-                    fa->Offset(_inode_map[fa->InodeID()] + _addr_start);
+                    if (map_contains(_inode_map, fa->InodeID()))
+                        fa->Offset(_inode_map[fa->InodeID()] + _addr_start);
                 }
                 // p.second->Unlock();
             }
