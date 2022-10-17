@@ -1,7 +1,7 @@
-VM ID: 0
+VM ID: 1
 Repeats: 5
 Group number: group08
-Group commit: "21fd69f7063af89e9cb2b7c807d90e003ff3c59d"
+Group commit: "eaebf93177fa835d364d539179387390ed7bb615"
 
 Milestone m45
 	Directory: 2022-stosys-group08
@@ -15,11 +15,10 @@ Milestone m45
 		sudo rm -rf /tmp/shadowdb
 		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
-		ERROR: Command did not complete in 20 minutes
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -29,14 +28,153 @@ Milestone m45
 		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
 		==============================================================
 		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 300 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 120 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
+	Execute code for experiment 0
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
 		--------------------------------------------------
-		DB opening failed at posix:///tmp/shadowdb due to IO error: While lock file: /tmp/shadowdb/LOCK: Resource temporarily unavailable
-		m45: /home/user/2022-stosys-group08/src/m45-rocksdb/m45_main.cc:251: int main(int, char**): Assertion `ret == 0' failed.
-		Aborted
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 300 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 99 milliseconds
+		====================================================================
 		--------------------------------------------------
-	Stop execution for this group
+	Execute code for experiment 0
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
+		--------------------------------------------------
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 300 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 137 milliseconds
+		====================================================================
+		--------------------------------------------------
+	Execute code for experiment 0
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
+		--------------------------------------------------
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 300 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 138 milliseconds
+		====================================================================
+		--------------------------------------------------
+	Execute code for experiment 0
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 100 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
+		--------------------------------------------------
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 300 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 112 milliseconds
+		====================================================================
+		--------------------------------------------------
 	Execute code for experiment 1
 		sudo nvme zns reset-zone /dev/nvme0n1 -a
 		sudo rm -rf /tmp/shadowdb
@@ -45,7 +183,7 @@ Milestone m45
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 15000 -k 10 -v 100
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -59,14 +197,18 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 30000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1244 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		m45: /home/user/2022-stosys-group08/src/m45-rocksdb/m45_main.cc:296: int main(int, char**): Assertion `s.ok()' failed.
-		Aborted
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 2
+	Execute code for experiment 1
 		sudo nvme zns reset-zone /dev/nvme0n1 -a
 		sudo rm -rf /tmp/shadowdb
 		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 5000 -k 10 -v 100
@@ -74,7 +216,7 @@ Milestone m45
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 15000 -k 10 -v 100
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -88,20 +230,123 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 30000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1307 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
+	Execute code for experiment 1
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 5000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 10000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 15000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
 		--------------------------------------------------
-		m45: /home/user/2022-stosys-group08/src/m45-rocksdb/m45_main.cc:296: int main(int, char**): Assertion `s.ok()' failed.
-		Aborted
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 30000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1230 milliseconds
+		====================================================================
 		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 3
+	Execute code for experiment 1
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 5000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 10000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 15000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
+		--------------------------------------------------
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 30000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1243 milliseconds
+		====================================================================
+		--------------------------------------------------
+	Execute code for experiment 1
+		sudo nvme zns reset-zone /dev/nvme0n1 -a
+		sudo rm -rf /tmp/shadowdb
+		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 5000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 10000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 15000 -k 10 -v 100
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
+		--------------------------------------------------
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 30000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1240 milliseconds
+		====================================================================
+		--------------------------------------------------
+	Execute code for experiment 2
 		sudo nvme zns reset-zone /dev/nvme0n1 -a
 		sudo rm -rf /tmp/shadowdb
 		sudo ./bin/m45 -D -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -115,17 +360,51 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 50000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1052 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
+	Execute code for experiment 3
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
+		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
+	Verify code
+		SUCCESS: Got output as expected
 		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
+		==============================================================
+		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
+		==============================================================
+		==============================================================
+		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
+		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
+		==============================================================
+		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
+		Environment from URI posix:///tmp/shadowdb for FS Posix File System
+		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
+		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
+		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 100000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 1572 milliseconds
+		====================================================================
 		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 4
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -139,17 +418,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 150000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 2160 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 5
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -163,17 +447,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 200000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 2955 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 6
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -187,17 +476,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 250000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 2423 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 7
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -211,17 +505,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 300000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 3305 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 8
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -235,17 +534,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 350000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 4215 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 9
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -259,17 +563,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 400000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 4575 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -283,17 +592,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 450000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 3809 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 11
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -307,17 +621,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 500000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 4919 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 12
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -331,17 +650,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 550000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 6142 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 13
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -355,17 +679,22 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 600000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 6062 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 14
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
 	Verify code
-		ERROR: Incorrect output
+		SUCCESS: Got output as expected
 		--------------------------------------------------
 		==============================================================
 		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
@@ -379,2122 +708,107 @@ Milestone m45
 		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
 		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
 		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
+		Environment from URI s2fs:nvme0n1:///tmp/testdb/ for FS S2FileSytem
+		## Database opened at s2fs:nvme0n1:///tmp/testdb/ db name is /tmp/testdb/ , attached FS is --> S2FileSytem<--
+		Starting data reading from the shadow db at posix:///tmp/shadowdb | single 0
+		**********************************************
+		OK: all 650000 values matched successfully
+		 **********************************************
+		database(s) closed, test is done OK
+		====================================================================
+		[stosys-stats] The elapsed time is 5016 milliseconds
+		====================================================================
 		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
 	Execute code for experiment 15
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
 		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 16
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 17
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 18
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 19
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 20
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 21
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 22
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 23
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 24
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 25
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 26
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 27
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 28
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 29
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 30
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 31
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 32
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 33
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 34
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 35
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 36
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 37
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 38
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 39
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 40
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 41
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 42
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 43
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 44
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 45
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 46
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 47
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 48
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 49
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 50
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 51
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 52
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 53
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 54
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 55
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 56
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 57
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 58
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 59
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 60
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 61
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 62
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 63
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 64
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 65
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 66
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 67
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 68
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 69
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 70
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 71
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 72
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 73
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 74
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 75
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 76
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 77
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 78
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 79
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 80
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 81
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 82
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 83
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 84
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 85
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 86
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 87
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 88
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 89
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 90
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 91
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 92
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 93
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 94
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 95
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 96
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 97
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 98
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 99
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 100
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 101
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-	Execute code for experiment 102
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -e 50000 -k 10 -v 10
-		sudo ./bin/m45 -p s2fs:nvme0n1:///tmp/testdb/ -r
-	Verify code
-		ERROR: Incorrect output
-		--------------------------------------------------
-		==============================================================
-		Welcome to milestone 4/5, which is about integration into RocksDB (also: congratulations for bearing with us so far!)
-		==============================================================
-		==============================================================
-		test_uri s2fs:nvme0n1:///tmp/testdb/ , shadow uri posix:///tmp/shadowdb
-		entries 1, each entry ksize 10 bytes, vsize 90 bytes, readonly verify : 1 deleteall : 0 single : 0
-		==============================================================
-		Opening database at posix:///tmp/shadowdb with uri posix and the db_path as /tmp/shadowdb
-		Environment from URI posix:///tmp/shadowdb for FS Posix File System
-		## Database opened at posix:///tmp/shadowdb db name is /tmp/shadowdb , attached FS is --> Posix File System<--
-		Opening database at s2fs:nvme0n1:///tmp/testdb/ with uri s2fs:nvme0n1 and the db_path as /tmp/testdb/
-		Initialization uri is s2fs:nvme0n1:///tmp/testdb/ and errmsg:
-		--------------------------------------------------
-		ERROR: Found an error
-		--------------------------------------------------
-		/home/user/2022-stosys-group08/src/m45-rocksdb/S2FSCommon.h:167:74: runtime error: load of value 3200171710, which is not a valid value for type 'INodeType'
-		--------------------------------------------------
-	Stop execution for this group
-No total runtime - only printed when everything is working
+		ERROR: Command did not complete in 10 minutes
+	Verify code
+		ERROR: No output
+	Skip experiment 16 due to previous crash
+	Skip experiment 17 due to previous crash
+	Skip experiment 18 due to previous crash
+	Skip experiment 19 due to previous crash
+	Skip experiment 20 due to previous crash
+	Skip experiment 21 due to previous crash
+	Skip experiment 22 due to previous crash
+	Skip experiment 23 due to previous crash
+	Skip experiment 24 due to previous crash
+	Skip experiment 25 due to previous crash
+	Skip experiment 26 due to previous crash
+	Skip experiment 27 due to previous crash
+	Skip experiment 28 due to previous crash
+	Skip experiment 29 due to previous crash
+	Skip experiment 30 due to previous crash
+	Skip experiment 31 due to previous crash
+	Skip experiment 32 due to previous crash
+	Skip experiment 33 due to previous crash
+	Skip experiment 34 due to previous crash
+	Skip experiment 35 due to previous crash
+	Skip experiment 36 due to previous crash
+	Skip experiment 37 due to previous crash
+	Skip experiment 38 due to previous crash
+	Skip experiment 39 due to previous crash
+	Skip experiment 40 due to previous crash
+	Skip experiment 41 due to previous crash
+	Skip experiment 42 due to previous crash
+	Skip experiment 43 due to previous crash
+	Skip experiment 44 due to previous crash
+	Skip experiment 45 due to previous crash
+	Skip experiment 46 due to previous crash
+	Skip experiment 47 due to previous crash
+	Skip experiment 48 due to previous crash
+	Skip experiment 49 due to previous crash
+	Skip experiment 50 due to previous crash
+	Skip experiment 51 due to previous crash
+	Skip experiment 52 due to previous crash
+	Skip experiment 53 due to previous crash
+	Skip experiment 54 due to previous crash
+	Skip experiment 55 due to previous crash
+	Skip experiment 56 due to previous crash
+	Skip experiment 57 due to previous crash
+	Skip experiment 58 due to previous crash
+	Skip experiment 59 due to previous crash
+	Skip experiment 60 due to previous crash
+	Skip experiment 61 due to previous crash
+	Skip experiment 62 due to previous crash
+	Skip experiment 63 due to previous crash
+	Skip experiment 64 due to previous crash
+	Skip experiment 65 due to previous crash
+	Skip experiment 66 due to previous crash
+	Skip experiment 67 due to previous crash
+	Skip experiment 68 due to previous crash
+	Skip experiment 69 due to previous crash
+	Skip experiment 70 due to previous crash
+	Skip experiment 71 due to previous crash
+	Skip experiment 72 due to previous crash
+	Skip experiment 73 due to previous crash
+	Skip experiment 74 due to previous crash
+	Skip experiment 75 due to previous crash
+	Skip experiment 76 due to previous crash
+	Skip experiment 77 due to previous crash
+	Skip experiment 78 due to previous crash
+	Skip experiment 79 due to previous crash
+	Skip experiment 80 due to previous crash
+	Skip experiment 81 due to previous crash
+	Skip experiment 82 due to previous crash
+	Skip experiment 83 due to previous crash
+	Skip experiment 84 due to previous crash
+	Skip experiment 85 due to previous crash
+	Skip experiment 86 due to previous crash
+	Skip experiment 87 due to previous crash
+	Skip experiment 88 due to previous crash
+	Skip experiment 89 due to previous crash
+	Skip experiment 90 due to previous crash
+	Skip experiment 91 due to previous crash
+	Skip experiment 92 due to previous crash
+	Skip experiment 93 due to previous crash
+	Skip experiment 94 due to previous crash
+	Skip experiment 95 due to previous crash
+	Skip experiment 96 due to previous crash
+	Skip experiment 97 due to previous crash
+	Skip experiment 98 due to previous crash
+	Skip experiment 99 due to previous crash
+	Skip experiment 100 due to previous crash
+	Skip experiment 101 due to previous crash
+Total run time: 1337 milliseconds
