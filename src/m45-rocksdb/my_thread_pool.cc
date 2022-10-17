@@ -111,4 +111,17 @@ extern "C"
 
         pthread_mutex_unlock(&pool_mutex);
     }
+
+    void pool_destory(my_thread_pool *pool)
+    {
+        my_thread *ptr = pool->head;
+        do
+        {
+            ptr->status = STOPPED;
+            pthread_join(ptr->thread, NULL);
+            ptr = ptr->next;
+
+        } while (ptr != pool->head);
+        pool->idle_count--;
+    }
 };

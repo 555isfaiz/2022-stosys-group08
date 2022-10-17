@@ -57,6 +57,7 @@ extern "C"
     my_thread *pool_add_thread(my_thread_pool *pool);
     void pool_init(my_thread_pool **pool, uint32_t size);
     void pool_exec(my_thread_pool *pool, func_ptr func, void *args);
+    void pool_destory(my_thread_pool *pool);
 };
 
 #endif

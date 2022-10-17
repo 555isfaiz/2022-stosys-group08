@@ -399,11 +399,16 @@ namespace ROCKSDB_NAMESPACE
                 if (s != this)
                     s->WriteLock();
                 auto next = s->GetBlockByOffset(addr_2_inseg_offset(block->Next()));
-                next->WriteLock();
-                next->Prev(block->GlobalOffset());
-                next->Unlock();
+                if (!next)
+                    next = new_blocks[addr_2_inseg_offset(block->Next())];
                 if (s != this)
+                    next->WriteLock();
+                next->Prev(block->GlobalOffset());
+                if (s != this)
+                {
+                    next->Unlock();
                     s->Unlock();
+                }
             }
 
             if (block->Prev())
@@ -414,11 +419,14 @@ namespace ROCKSDB_NAMESPACE
                 auto prev = s->GetBlockByOffset(addr_2_inseg_offset(block->Prev()));
                 if (!prev)
                     prev = new_blocks[addr_2_inseg_offset(block->Prev())];
-                prev->WriteLock();
-                prev->Next(block->GlobalOffset());
-                prev->Unlock();
                 if (s != this)
+                    prev->WriteLock();
+                prev->Next(block->GlobalOffset());
+                if (s != this)
+                {
+                    prev->Unlock();
                     s->Unlock();
+                }
             }
 
             ptr += block->ActualSize();
@@ -446,7 +454,7 @@ namespace ROCKSDB_NAMESPACE
                 _blocks.erase(addr_2_inseg_offset(off));
             }
 
-            p.second->Unlock();
+            block->Unlock();
         }
 
         // Update the offsets inside the dir data

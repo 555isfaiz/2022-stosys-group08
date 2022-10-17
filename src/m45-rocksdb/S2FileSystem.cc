@@ -204,12 +204,12 @@ namespace ROCKSDB_NAMESPACE
     start:
         S2FSSegment *seg = ReadSegment(_wp_end);
         seg->ReadLock();
-        if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
-        {
-            seg->Unlock();
-            return seg;
-        }
+        auto cur_size = seg->CurSize();
         seg->Unlock();
+        if (cur_size < S2FSSegment::Size() - S2FSBlock::Size())
+            return seg;
+        // else
+        //     seg->LastModify(0);
 
         if (_wp_end < _zns_dev->capacity_bytes - S2FSSegment::Size())
         {
@@ -219,12 +219,23 @@ namespace ROCKSDB_NAMESPACE
 
         for (uint64_t i = 0; i < _zns_dev->capacity_bytes; i += S2FSSegment::Size())
         {
+            // segments may be GCed before, so check the size before GC
             seg = ReadSegment(i);
-            seg->OnGC();
+            if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
+            {
+                seg->Unlock();
+                return seg;
+            }
+            seg->Unlock();
+            
+            // Only do async GC
+            seg->LastModify(0);
+
             seg->ReadLock();
             if (seg->CurSize() < S2FSSegment::Size() - S2FSBlock::Size())
             {
                 seg->Unlock();
+                _wp_end = i;
                 return seg;
             }
             seg->Unlock();
@@ -232,6 +243,7 @@ namespace ROCKSDB_NAMESPACE
 
         std::cout << "Disk full"
                   << "\n";
+        abort();
         return NULL;
     }
 
